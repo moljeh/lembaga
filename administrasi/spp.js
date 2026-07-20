@@ -382,6 +382,7 @@ document.getElementById('formInputSpp').addEventListener('submit', function(e) {
             closeModalSpp();
             Swal.fire({toast:true, position:'top-end', icon:'success', title:'Transaksi dicatat!', showConfirmButton:false, timer:2000});
             loadDataSpp();
+            loadBukuKas(); // <--- KODE DITAMBAHKAN DI SINI
         } else Swal.fire('Gagal', res.message, 'error');
     }).catch(e => {
         showLoading(false);
@@ -441,8 +442,241 @@ function hapusSpp(nis, keterangan) {
                 if(res.status === 'success') {
                     Swal.fire({toast:true, position:'top-end', icon:'success', title:'Dihapus!', showConfirmButton:false, timer:1500});
                     loadDataSpp();
+                    loadBukuKas(); // <--- KODE DITAMBAHKAN DI SINI
                 } else Swal.fire('Gagal', res.message, 'error');
             }).catch(e => { showLoading(false); Swal.fire('Error', 'Koneksi gagal.', 'error'); });
         }
     });
+}
+
+// =========================================================
+// SISTEM BUKU KAS & PENGELUARAN (SALDO OTOMATIS)
+// =========================================================
+let SALDO_SAAT_INI = 0; // Variabel global pengunci saldo
+
+// Jalankan loadBukuKas setiap kali halaman dibuka
+document.addEventListener("DOMContentLoaded", () => {
+    loadBukuKas();
+});
+
+// Modifikasi fungsi initSpp() agar memuat saldo juga
+const originalInitSpp = initSpp;
+initSpp = function() {
+    originalInitSpp();
+    loadBukuKas();
+}
+
+function loadBukuKas() {
+    const fd = new URLSearchParams();
+    fd.append('action', 'getBukuKas');
+    fd.append('token', sessionStorage.getItem('tokenMadasa'));
+
+    fetch(GAS_URL, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(res => {
+        if(res.status === 'success') {
+            SALDO_SAAT_INI = res.saldo; // Simpan ke memori untuk validasi
+            
+            document.getElementById('kas_pemasukan').innerText = formatRp(res.masuk);
+            document.getElementById('kas_pengeluaran').innerText = formatRp(res.keluar);
+            document.getElementById('kas_saldo').innerText = formatRp(res.saldo);
+        }
+    }).catch(e => console.log("Gagal memuat buku kas", e));
+}
+
+function openModalPengeluaran() {
+    document.getElementById('formPengeluaran').reset();
+    
+    // Set tanggal hari ini otomatis
+    document.getElementById('out_tanggal').valueAsDate = new Date();
+    
+    document.getElementById('modalPengeluaran').classList.remove('hidden');
+}
+
+function closeModalPengeluaran() {
+    document.getElementById('modalPengeluaran').classList.add('hidden');
+}
+
+document.getElementById('formPengeluaran').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const nominalKeluar = getAngkaMurni(document.getElementById('out_nominal').value);
+    
+    // VALIDASI OTOMATIS: Tolak jika minus
+    if (nominalKeluar > SALDO_SAAT_INI) {
+        return Swal.fire({
+            icon: 'error',
+            title: 'Saldo Tidak Cukup!',
+            html: `Anda mencoba mengeluarkan <b>${formatRp(nominalKeluar)}</b>, <br>sedangkan saldo saat ini hanya <b>${formatRp(SALDO_SAAT_INI)}</b>.`
+        });
+    }
+
+    if (nominalKeluar <= 0) return Swal.fire('Perhatian', 'Nominal tidak valid', 'warning');
+
+    const btnSubmit = this.querySelector('button[type="submit"]');
+    const teksAsli = btnSubmit.innerHTML;
+    btnSubmit.disabled = true; 
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+
+    const tanggal = document.getElementById('out_tanggal').value;
+    const keterangan = document.getElementById('out_keterangan').value;
+    
+    showLoading(true, "Mencatat Pengeluaran...");
+
+    const fd = new URLSearchParams();
+    fd.append('action', 'addPengeluaran');
+    fd.append('token', sessionStorage.getItem('tokenMadasa'));
+    fd.append('tanggal', tanggal);
+    fd.append('keterangan', keterangan);
+    fd.append('nominal', nominalKeluar);
+    fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin'); // Nama penginput
+
+    fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
+        showLoading(false);
+        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
+        
+        if (res.status === 'success') {
+            closeModalPengeluaran();
+            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengeluaran dicatat!', showConfirmButton:false, timer:2000});
+            loadBukuKas(); // Refresh Saldo Seketika
+        } else {
+            Swal.fire('Gagal', res.message, 'error');
+        }
+    }).catch(e => {
+        showLoading(false);
+        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
+        Swal.fire('Error', 'Koneksi gagal.', 'error');
+    });
+});
+
+// =========================================================
+// FUNGSI LAPORAN BUKU KAS (PEMASUKAN & PENGELUARAN)
+// =========================================================
+
+function tarikLaporanKas() {
+    const keyword = document.getElementById('lap_keyword').value;
+    const jenis = document.getElementById('lap_jenis').value;
+
+    showLoading(true, "Memuat Riwayat...");
+    
+    const fd = new URLSearchParams();
+    fd.append('action', 'getLaporanKas');
+    fd.append('token', sessionStorage.getItem('tokenMadasa'));
+    fd.append('keyword', keyword);
+    fd.append('jenis', jenis);
+
+    fetch(GAS_URL, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(res => {
+        showLoading(false);
+        const tbody = document.getElementById('bodyLaporanKas');
+        tbody.innerHTML = '';
+        
+        if(res.status === 'success' && res.data.length > 0) {
+            let nomor = 1;
+            res.data.forEach(item => {
+                let warnaJenis = item.jenis === 'Masuk' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+                let strMasuk = item.masuk > 0 ? formatRp(item.masuk) : '-';
+                let strKeluar = item.keluar > 0 ? formatRp(item.keluar) : '-';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition-all">
+                        <td class="p-3 text-center text-gray-500">${nomor++}</td>
+                        <td class="p-3 font-semibold text-gray-700 text-xs sm:text-sm whitespace-normal min-w-[200px]">${item.rincian}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-1 rounded text-[10px] font-bold ${warnaJenis}">${item.jenis}</span></td>
+                        <td class="p-3 text-right font-bold text-emerald-600">${strMasuk}</td>
+                        <td class="p-3 text-right font-bold text-red-500">${strKeluar}</td>
+                    </tr>
+                `;
+            });
+            document.getElementById('lap_tot_masuk').innerText = formatRp(res.masuk);
+            document.getElementById('lap_tot_keluar').innerText = formatRp(res.keluar);
+            document.getElementById('lap_tot_saldo').innerText = formatRp(res.masuk - res.keluar);
+        } else {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-400 font-medium">Tidak ada transaksi yang cocok.</td></tr>';
+            document.getElementById('lap_tot_masuk').innerText = "Rp 0";
+            document.getElementById('lap_tot_keluar').innerText = "Rp 0";
+            document.getElementById('lap_tot_saldo').innerText = "Rp 0";
+        }
+    }).catch(e => {
+        showLoading(false);
+        Swal.fire('Error', 'Gagal memuat buku kas.', 'error');
+    });
+}
+
+function cetakLaporanKas() {
+    const tbody = document.getElementById('bodyLaporanKas');
+    if (tbody.innerText.includes('Ketik bulan/tahun') || tbody.innerText.includes('Tidak ada transaksi')) {
+        return Swal.fire('Tabel Kosong', 'Tidak ada data laporan yang bisa dicetak.', 'error');
+    }
+
+    const keyword = document.getElementById('lap_keyword').value || "Semua Waktu";
+    const areaTabel = document.getElementById('areaTabelKas');
+    const tabelClone = areaTabel.cloneNode(true);
+    
+    // Bersihkan kelas Tailwind
+    tabelClone.removeAttribute('class');
+    tabelClone.querySelectorAll('table, thead, tbody, tfoot, tr, th, td, span').forEach(el => el.removeAttribute('class'));
+
+    const tanggalCetak = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const logoUrl = window.location.origin + window.location.pathname.replace(/administrasi\/spp\.html$/i, '') + 'asset/logo.png';
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return Swal.fire('Pop-up Diblokir', 'Izinkan pop-up browser untuk mencetak.', 'error');
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="id">
+        <head>
+            <title>Buku_Kas_Madrasah</title>
+            <style>
+                @page { size: portrait; margin: 15mm; }
+                body { font-family: 'Arial', sans-serif; font-size: 11px; color: #000; margin: 0; padding: 0; }
+                .kop-surat { display: flex; align-items: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+                .kop-surat img { width: 60px; height: 60px; margin-right: 15px; }
+                .kop-surat .teks { flex: 1; text-align: center; padding-right: 75px; }
+                .kop-surat h2 { margin: 0; font-size: 20px; text-transform: uppercase; font-weight: bold; }
+                .kop-surat p { margin: 5px 0 0 0; font-size: 12px; }
+                
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th, td { border: 1px solid #000; padding: 6px; font-size: 11px; vertical-align: middle; }
+                th { background-color: #f3f4f6 !important; font-weight: bold; text-align: center; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                td:nth-child(2) { text-align: left; }
+                td:nth-child(1), td:nth-child(3) { text-align: center; }
+                td:nth-child(4), td:nth-child(5) { text-align: right; }
+                
+                tfoot td { font-weight: bold; background-color: #e5e7eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                
+                .info-filter { margin-bottom: 15px; font-size: 11px; font-weight: bold; }
+                .footer { text-align: center; font-size: 10px; font-style: italic; color: #555; margin-top: 20px; border-top: 1px dashed #aaa; padding-top: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="kop-surat">
+                <img src="${logoUrl}" onerror="this.style.display='none'">
+                <div class="teks">
+                    <h2>Madrasah Darussalam</h2>
+                    <p>Laporan Buku Kas Umum (Arus Kas)</p>
+                </div>
+            </div>
+            
+            <div class="info-filter">Pencarian/Filter Terapan: <span style="border-bottom: 1px dashed #000;">${keyword}</span></div>
+            
+            ${tabelClone.innerHTML}
+            
+            <div style="margin-top: 40px; display: flex; justify-content: flex-end; padding-right: 20px; page-break-inside: avoid;">
+                <div style="text-align: center; width: 250px;">
+                    <p style="margin: 0 0 5px 0; font-size: 12px;">Bangkalan, ${tanggalCetak.split(',')[1]}</p>
+                    <p style="margin: 0; font-size: 12px; font-weight: bold;">Bendahara Madrasah</p>
+                    <div style="height: 70px;"></div>
+                    <p style="margin: 0; font-size: 12px; font-weight: bold; text-decoration: underline;">( ...................................... )</p>
+                </div>
+            </div>
+            <div class="footer">Dicetak otomatis dari Sistem Administrasi Madrasah | Tgl: ${tanggalCetak}</div>
+            
+            <script> window.onload = function() { setTimeout(function() { window.print(); }, 1000); }; </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }

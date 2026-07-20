@@ -107,6 +107,10 @@ if (action === 'simpanAbsenBarcode') return simpanAbsenBarcode(e);
 
       case 'getSettingSpp': return getSettingSpp();
       case 'saveSettingSpp': return saveSettingSpp(e);
+
+      case 'getBukuKas': return getBukuKas();
+      case 'addPengeluaran': return addPengeluaran(e);
+      case 'getLaporanKas': return getLaporanKas(e);
       
       // --- KODE BARU: RUTE UNTUK FITUR ABSENSI ---
       case 'setLiburRentang': return setLiburRentang(e);
@@ -304,7 +308,9 @@ function simpanDataNilai(e) {
       }
     }
     for (var n = 0; n < listNilai.length; n++) {
-      sheet.appendRow(["'" + listNilai[n].nis, listNilai[n].nama, kelasPilih, hari, listNilai[n].total, listNilai[n].rata, listNilai[n].m1, listNilai[n].n1, listNilai[n].m2, listNilai[n].n2, listNilai[n].m3, listNilai[n].n3]);
+     for (var n = 0; n < listNilai.length; n++) {
+  sheet.appendRow(["'" + listNilai[n].nis, listNilai[n].nama, kelasPilih, hari, listNilai[n].total, listNilai[n].rata, listNilai[n].m1, listNilai[n].n1, listNilai[n].m2, listNilai[n].n2]);
+}
     }
     return responSukses({ message: 'Nilai TK berhasil disimpan.' });
   } else {
@@ -1553,4 +1559,139 @@ function simpanWaktuAbsen(e) {
      sheet.getRange("E2").setValue(jamTutup);
   }
   return responSukses({ message: 'Jam absensi berhasil diperbarui!' });
+}
+
+// =================================================================
+// FUNGSI BUKU KAS (MENGHITUNG SALDO & MENCATAT PENGELUARAN)
+// =================================================================
+
+function getBukuKas() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. Hitung Total Pemasukan SPP
+  var sheetSPP = ss.getSheetByName('SPP');
+  var totalMasuk = 0;
+  if (sheetSPP) {
+    var dataMasuk = sheetSPP.getDataRange().getValues();
+    for (var i = 1; i < dataMasuk.length; i++) {
+      totalMasuk += parseFloat(dataMasuk[i][4]) || 0; // Kolom ke-5 adalah Nominal
+    }
+  }
+  
+  // 2. Hitung Total Pengeluaran
+  var sheetKeluar = ss.getSheetByName('PENGELUARAN');
+  var totalKeluar = 0;
+  if (sheetKeluar) {
+    var dataKeluar = sheetKeluar.getDataRange().getValues();
+    for (var j = 1; j < dataKeluar.length; j++) {
+      totalKeluar += parseFloat(dataKeluar[j][2]) || 0; // Kolom ke-3 adalah Nominal
+    }
+  }
+  
+  // 3. Kalkulasi Saldo
+  var saldoAkhir = totalMasuk - totalKeluar;
+  
+  return responSukses({ 
+    masuk: totalMasuk, 
+    keluar: totalKeluar, 
+    saldo: saldoAkhir 
+  });
+}
+
+function addPengeluaran(e) {
+  try {
+    var nominalReq = parseFloat(e.parameter.nominal) || 0;
+    
+    // [KEAMANAN SERVER] Cek saldo secara live di backend sebelum memproses
+    // Mencegah tembusan hacker jika mencoba mem-bypass peringatan di Frontend
+    var dataKas = JSON.parse(getBukuKas().getContent());
+    if (nominalReq > dataKas.saldo) {
+       return responError("Transaksi ditolak! Saldo saat ini hanya tersisa Rp " + dataKas.saldo);
+    }
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('PENGELUARAN');
+    
+    // Buat Sheet Pengeluaran otomatis jika belum ada
+    if (!sheet) {
+      sheet = ss.insertSheet('PENGELUARAN');
+      sheet.appendRow(['Tanggal', 'Keterangan Pengeluaran', 'Nominal Keluar', 'Diinput Oleh', 'Waktu Sistem']);
+      sheet.getRange(1, 1, 1, 5).setFontWeight("bold").setBackground("#fca5a5");
+    }
+    
+    var tgl = e.parameter.tanggal;
+    var ket = e.parameter.keterangan;
+    var usr = e.parameter.user;
+    var wkt = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
+    
+    sheet.appendRow(["'" + tgl, ket, nominalReq, usr, wkt]);
+    
+    return responSukses({ message: "Pengeluaran sukses dicatat." });
+    
+  } catch (err) {
+    return responError("Gagal memproses: " + err.message);
+  }
+}
+
+// =================================================================
+// FUNGSI GABUNGAN BUKU KAS (UNTUK LAPORAN CETAK)
+// =================================================================
+function getLaporanKas(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var keyword = e.parameter.keyword ? e.parameter.keyword.toString().toLowerCase() : "";
+  var jenisReq = e.parameter.jenis; // "Semua", "Masuk", "Keluar"
+
+  var result = [];
+  var totMasuk = 0;
+  var totKeluar = 0;
+
+  // 1. Tarik Data SPP (Pemasukan)
+  if (jenisReq === "Semua" || jenisReq === "Masuk") {
+    var sheetSPP = ss.getSheetByName('SPP');
+    if (sheetSPP) {
+      var dataSPP = sheetSPP.getDataRange().getValues();
+      for (var i = 1; i < dataSPP.length; i++) {
+        var ket = dataSPP[i][3];
+        if (ket instanceof Date) ket = Utilities.formatDate(ket, Session.getScriptTimeZone(), "dd MMMM yyyy");
+        else ket = ket.toString();
+
+        var nominal = parseFloat(dataSPP[i][4]) || 0;
+        var rincian = "Terima SPP dari " + dataSPP[i][1] + " (" + ket + ")";
+
+        // Cek kecocokan teks
+        if (keyword === "" || rincian.toLowerCase().indexOf(keyword) !== -1) {
+          result.push({ rincian: rincian, jenis: "Masuk", masuk: nominal, keluar: 0 });
+          totMasuk += nominal;
+        }
+      }
+    }
+  }
+
+  // 2. Tarik Data Pengeluaran
+  if (jenisReq === "Semua" || jenisReq === "Keluar") {
+    var sheetKeluar = ss.getSheetByName('PENGELUARAN');
+    if (sheetKeluar) {
+      var dataKeluar = sheetKeluar.getDataRange().getValues();
+      for (var j = 1; j < dataKeluar.length; j++) {
+        var tgl = dataKeluar[j][0];
+        if (tgl instanceof Date) tgl = Utilities.formatDate(tgl, Session.getScriptTimeZone(), "dd/MM/yyyy");
+        else tgl = tgl.toString().replace(/'/g, "");
+
+        var ket = dataKeluar[j][1].toString();
+        var nominal = parseFloat(dataKeluar[j][2]) || 0;
+        var rincian = tgl + " - " + ket;
+
+        // Cek kecocokan teks
+        if (keyword === "" || rincian.toLowerCase().indexOf(keyword) !== -1) {
+          result.push({ rincian: rincian, jenis: "Keluar", masuk: 0, keluar: nominal });
+          totKeluar += nominal;
+        }
+      }
+    }
+  }
+
+  // Balik urutan agar transaksi terbaru ada di paling atas (Z ke A)
+  result.reverse();
+
+  return responSukses({ data: result, masuk: totMasuk, keluar: totKeluar });
 }

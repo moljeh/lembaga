@@ -59,6 +59,65 @@
             <i class="fas fa-coins absolute -right-6 -bottom-6 text-emerald-900 opacity-20" style="font-size: 8rem;"></i>
         </div>
 		
+		
+		<!-- KARTU INFORMASI BUKU KAS & SALDO -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 mt-6">
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between">
+        <div>
+            <p class="text-xs text-gray-500 font-bold mb-1">Total Pemasukan SPP</p>
+            <h3 class="text-xl font-bold text-emerald-600" id="kas_pemasukan">Rp 0</h3>
+        </div>
+        <div class="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500"><i class="fas fa-arrow-down"></i></div>
+    </div>
+    
+    <div class="bg-white p-5 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between">
+        <div>
+            <p class="text-xs text-gray-500 font-bold mb-1">Total Pengeluaran</p>
+            <h3 class="text-xl font-bold text-red-500" id="kas_pengeluaran">Rp 0</h3>
+        </div>
+        <div class="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-500"><i class="fas fa-arrow-up"></i></div>
+    </div>
+    
+    <div class="bg-gradient-to-br from-emerald-600 to-teal-700 p-5 rounded-2xl shadow-md border border-emerald-800 text-white relative overflow-hidden">
+        <i class="fas fa-wallet absolute right-4 top-4 text-5xl opacity-20 transform -rotate-12"></i>
+        <div class="relative z-10">
+            <p class="text-xs text-emerald-100 font-bold mb-1">SALDO SAAT INI</p>
+            <h3 class="text-2xl font-bold tracking-wide mb-3" id="kas_saldo">Rp 0</h3>
+            <button onclick="openModalPengeluaran()" class="w-full text-xs bg-white text-emerald-800 font-bold py-2 px-3 rounded-lg shadow-sm hover:bg-gray-100 transition-all flex items-center justify-center gap-2">
+                <i class="fas fa-minus-circle text-red-500"></i> Catat Pengeluaran
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL FORM PENGELUARAN -->
+<div id="modalPengeluaran" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 transform transition-all">
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <h3 class="text-lg font-heading font-bold text-red-600"><i class="fas fa-receipt mr-2"></i>Catat Pengeluaran</h3>
+            <button onclick="closeModalPengeluaran()" class="text-gray-400 hover:text-red-500 transition-all"><i class="fas fa-times text-xl"></i></button>
+        </div>
+        <form id="formPengeluaran" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Pengeluaran</label>
+                <input type="date" id="out_tanggal" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-red-500 font-medium" required>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan / Keperluan</label>
+                <textarea id="out_keterangan" rows="2" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-red-500" placeholder="Contoh: Beli alat kebersihan" required></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">Nominal Keluar (Rp)</label>
+                <input type="text" id="out_nominal" oninput="formatInputRupiah(this)" class="w-full p-3 border border-red-300 rounded-xl font-bold text-red-600 bg-red-50 outline-none focus:ring-2 focus:ring-red-500" placeholder="Contoh: 50.000" required>
+            </div>
+            <div class="flex justify-end gap-3 pt-4 border-t mt-6">
+                <button type="button" onclick="closeModalPengeluaran()" class="px-4 py-2 border rounded-xl text-gray-600 hover:bg-gray-50 font-semibold text-sm">Batal</button>
+                <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-sm"><i class="fas fa-save mr-2"></i> Simpan</button>
+            </div>
+        </form>
+    </div>
+</div>
+		
 	
         <!-- Info Ketetapan SPP Dinamis -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-6">
@@ -140,6 +199,80 @@
                 </table>
             </div>
         </div>
+		
+		
+		
+		<!-- LAPORAN BUKU KAS (MASUK & KELUAR) -->
+<div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mt-8 mb-10">
+    <div class="flex flex-col sm:flex-row justify-between items-center border-b border-gray-200 pb-4 mb-5 gap-3">
+        <div>
+            <h3 class="text-lg font-heading font-bold text-gray-800">
+                <i class="fas fa-book text-emerald-600 mr-2"></i>Buku Kas Umum (Riwayat Transaksi)
+            </h3>
+            <p class="text-xs text-gray-500 mt-1">Laporan gabungan pemasukan SPP dan pengeluaran madrasah.</p>
+        </div>
+        <button onclick="cetakLaporanKas()" class="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 text-sm">
+            <i class="fas fa-print"></i> Cetak Laporan
+        </button>
+    </div>
+
+    <!-- Filter Pencarian -->
+    <div class="flex flex-col sm:flex-row gap-4 mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+        <div class="w-full sm:w-1/2">
+            <label class="block text-xs font-bold text-gray-700 mb-1">Pencarian (Ketik Bulan / Tahun / Kata Kunci)</label>
+            <input type="text" id="lap_keyword" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-emerald-500 font-medium" placeholder="Contoh: Muharram, Juli, 1448, 2026...">
+        </div>
+        <div class="w-full sm:w-1/4">
+            <label class="block text-xs font-bold text-gray-700 mb-1">Jenis Transaksi</label>
+            <select id="lap_jenis" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-emerald-500 font-medium">
+                <option value="Semua">Semua (Masuk & Keluar)</option>
+                <option value="Masuk">Pemasukan Saja</option>
+                <option value="Keluar">Pengeluaran Saja</option>
+            </select>
+        </div>
+        <div class="flex items-end w-full sm:w-auto">
+            <button onclick="tarikLaporanKas()" class="w-full px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm transition-all shadow-sm">
+                <i class="fas fa-search mr-1"></i> Tampilkan
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabel Rekap Buku Kas -->
+    <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm" id="areaTabelKas">
+        <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead class="bg-gray-100 text-gray-700 text-xs uppercase border-b border-gray-200">
+                <tr>
+                    <th class="p-4 text-center w-12">No</th>
+                    <th class="p-4">Tanggal / Uraian Rincian</th>
+                    <th class="p-4 text-center">Jenis</th>
+                    <th class="p-4 text-right">Pemasukan (Rp)</th>
+                    <th class="p-4 text-right">Pengeluaran (Rp)</th>
+                </tr>
+            </thead>
+            <tbody id="bodyLaporanKas" class="divide-y divide-gray-100">
+                <tr>
+                    <td colspan="5" class="p-8 text-center text-gray-400">
+                        <i class="fas fa-filter text-3xl mb-2 text-gray-300 block"></i>
+                        Ketik bulan/tahun dan klik "Tampilkan" untuk memuat riwayat.
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                <tr>
+                    <td colspan="3" class="p-4 text-right font-bold text-gray-800">TOTAL SELAMA PERIODE INI :</td>
+                    <td class="p-4 text-right font-bold text-emerald-600" id="lap_tot_masuk">Rp 0</td>
+                    <td class="p-4 text-right font-bold text-red-600" id="lap_tot_keluar">Rp 0</td>
+                </tr>
+                <tr class="bg-emerald-50 border-t border-emerald-200">
+                    <td colspan="3" class="p-4 text-right font-bold text-emerald-900">SALDO BERSIH (Pemasukan - Pengeluaran) :</td>
+                    <td colspan="2" class="p-4 text-right font-bold text-emerald-700 text-base" id="lap_tot_saldo">Rp 0</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+		
+		
     </main>
 
     <!-- Modal Form Input / Edit SPP -->
