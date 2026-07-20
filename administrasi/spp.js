@@ -1,12 +1,19 @@
-// Menarik data santri mentah untuk keperluan dropdown pilihan nama
+// =========================================================
+// VARIABEL GLOBAL & LOADING
+// =========================================================
 let LOKAL_DATA_SANTRI = []; 
+let HISTORI_GLOBAL = []; 
+let TARIF_SPP_BULAN = 0;
+let JUMLAH_BULAN_SPP = 0;
+let TOTAL_TAGIHAN_SETAHUN = 0;
+let SALDO_SAAT_INI = 0;
 
 function showLoading(show, pesan = "Memproses...") {
     document.getElementById('loadingScreen').style.display = show ? 'flex' : 'none';
 }
 
 // =========================================================
-// JAM REAL-TIME DAN KALENDER (Sama seperti index)
+// JAM REAL-TIME DAN KALENDER
 // =========================================================
 function updateWaktuLokal() {
     const sekarang = new Date();
@@ -46,16 +53,16 @@ function updateWaktuLokal() {
 }
 
 // =========================================================
-// INISIALISASI AWAL (ANTI GAGAL LOAD & AUTO REFRESH)
+// INISIALISASI AWAL (LOAD DATA & SALDO)
 // =========================================================
 function initSpp() {
     updateWaktuLokal();
     setInterval(updateWaktuLokal, 1000);
     ambilMasterSantri();
-    ambilSettingSpp(); // <--- KODE BARU
+    ambilSettingSpp(); 
+    loadBukuKas();
 }
 
-// Menjamin fungsi tetap berjalan meski halaman lambat dimuat
 if (document.readyState === 'loading') {
     document.addEventListener("DOMContentLoaded", initSpp);
 } else {
@@ -72,10 +79,6 @@ function ambilMasterSantri() {
     .then(res => {
         if(res.status === 'success') {
             LOKAL_DATA_SANTRI = res.data;
-            
-            // FITUR BARU: Auto-Refresh Pilihan Dropdown
-            // Jika Anda sudah terlanjur memilih kelas sebelum data selesai diunduh,
-            // sistem akan otomatis memunculkan namanya sekarang!
             if (document.getElementById('filterKelasSpp').value) {
                 loadDataSpp();
             }
@@ -83,21 +86,10 @@ function ambilMasterSantri() {
     }).catch(e => console.log("Gagal muat master santri"));
 }
 
-// =========================================================
-// PENGATURAN KETETAPAN SPP MADRASAH (DINAMIS DARI DATABASE)
-// =========================================================
-let TARIF_SPP_BULAN = 0;
-let JUMLAH_BULAN_SPP = 0;
-let TOTAL_TAGIHAN_SETAHUN = 0;
-
-let HISTORI_GLOBAL = []; // Menyimpan riwayat sementara untuk modal
-
-// Format Rupiah
 function formatRp(angka) {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
 }
 
-// --- KODE BARU: Auto-Format saat diketik & Pengubah ke Angka Murni ---
 function formatInputRupiah(input) {
     let angkaMurni = input.value.replace(/[^0-9]/g, '');
     if (angkaMurni) {
@@ -112,14 +104,12 @@ function getAngkaMurni(stringInput) {
     return parseFloat(stringInput.toString().replace(/\./g, '')) || 0;
 }
 
-// Inisialisasi Tampilan Ketetapan
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('info_spp_bulan').innerText = formatRp(TARIF_SPP_BULAN) + ' / bln';
     document.getElementById('info_spp_jml_bulan').innerText = JUMLAH_BULAN_SPP + ' Bulan';
     document.getElementById('info_spp_total').innerText = formatRp(TOTAL_TAGIHAN_SETAHUN);
 });
 
-// KUMPULAN FUNGSI KETETAPAN SPP
 function ambilSettingSpp() {
     const fd = new URLSearchParams();
     fd.append('action', 'getSettingSpp');
@@ -131,10 +121,8 @@ function ambilSettingSpp() {
             JUMLAH_BULAN_SPP = parseFloat(res.bulan) || 0;
             TOTAL_TAGIHAN_SETAHUN = TARIF_SPP_BULAN * JUMLAH_BULAN_SPP;
             
-            // KUNCI PERBAIKAN: Jika angka lebih dari 0 maka tampilkan, jika 0 maka kosongkan ("")
             document.getElementById('input_tarif_spp').value = TARIF_SPP_BULAN > 0 ? new Intl.NumberFormat('id-ID').format(TARIF_SPP_BULAN) : "";
             document.getElementById('input_bulan_spp').value = JUMLAH_BULAN_SPP > 0 ? JUMLAH_BULAN_SPP : "";
-            
             document.getElementById('info_spp_total').innerText = formatRp(TOTAL_TAGIHAN_SETAHUN);
         }
     });
@@ -163,18 +151,13 @@ function simpanSettingSpp() {
         showLoading(false);
         if(res.status === 'success') {
             Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengaturan disimpan!', showConfirmButton:false, timer:2000});
-            
-            // Terapkan ke memori web secara instan
             TARIF_SPP_BULAN = nominal;
             JUMLAH_BULAN_SPP = bulan;
             TOTAL_TAGIHAN_SETAHUN = nominal * bulan;
-            
-            // Jika ada kelas yang sedang aktif dibuka, refresh tabelnya otomatis
             if(document.getElementById('filterKelasSpp').value) loadDataSpp();
         }
     }).catch(e => { showLoading(false); Swal.fire('Error', 'Gagal menyimpan.', 'error');});
 }
-
 
 // =========================================================
 // LOGIKA TAMPILKAN TABEL DATA SPP
@@ -197,7 +180,6 @@ function loadDataSpp() {
         tbody.innerHTML = '';
         
         HISTORI_GLOBAL = res.status === 'success' ? res.data : [];
-
         const selectNama = document.getElementById('spp_nis_nama');
         selectNama.innerHTML = '<option value="" disabled selected>-- Pilih Santri --</option>';
         
@@ -206,22 +188,17 @@ function loadDataSpp() {
 
         let santriDitemukan = LOKAL_DATA_SANTRI.filter(s => {
             let kelasDB = s.kelas ? s.kelas.toString().trim().toLowerCase() : '';
-            // Memastikan kelas IV tidak menarik data kelas I (Pencocokan Mutlak)
             return kelasDB === kelasBersih || kelasDB === kelasAlternatif;
         });
 
-        // Masukkan nama ke dropdown form
         santriDitemukan.forEach(s => { 
             selectNama.innerHTML += `<option value="${s.nis}">${s.nis} - ${s.nama}</option>`; 
         });
         
-        // Render Tabel Akuntansi
         if (santriDitemukan.length > 0) {
             let nomor = 1;
             santriDitemukan.forEach((santri) => {
                 let historiSpp = HISTORI_GLOBAL.filter(d => d.nis == santri.nis);
-                
-                // Kalkulasi Terbayar & Sisa Tunggakan
                 let totalTerbayar = 0;
                 historiSpp.forEach(item => { totalTerbayar += parseFloat(item.nominal) || 0; });
                 let sisaTunggakan = Math.max(0, TOTAL_TAGIHAN_SETAHUN - totalTerbayar);
@@ -251,7 +228,6 @@ function loadDataSpp() {
         }
     }).catch(e => { 
         showLoading(false); 
-        console.error(e);
         Swal.fire('Error', 'Gagal memuat data SPP.', 'error'); 
     });
 }
@@ -278,15 +254,15 @@ function toggleBintangPelajar() {
     
     if(isChecked) {
         areaTgl.style.display = 'none'; 
-        inputNominal.value = new Intl.NumberFormat('id-ID').format(TOTAL_TAGIHAN_SETAHUN); // Tambahkan format ini
+        inputNominal.value = new Intl.NumberFormat('id-ID').format(TOTAL_TAGIHAN_SETAHUN); 
         inputNominal.readOnly = true;
         document.getElementById('spp_status').value = "LUNAS";
         
         inputTgl.removeAttribute('required');
         inputThn.removeAttribute('required');
     } else {
-        areaTgl.style.display = 'block'; // Tampilkan kembali
-        kalkulasiOtomatisBulan(); // Hitung ulang nominal sesuai ceklis
+        areaTgl.style.display = 'block'; 
+        kalkulasiOtomatisBulan(); 
         inputNominal.readOnly = false;
         
         inputTgl.setAttribute('required', 'required');
@@ -294,14 +270,15 @@ function toggleBintangPelajar() {
     }
 }
 
+// =========================================================
+// MODAL INPUT SPP
+// =========================================================
 function openModalSpp(targetNis = null) {
     const kelas = document.getElementById('filterKelasSpp').value;
     if (!kelas) return Swal.fire('Perhatian', 'Pilih kelas terlebih dahulu.', 'warning');
 
     document.getElementById('formInputSpp').reset();
     document.getElementById('spp_nominal').value = new Intl.NumberFormat('id-ID').format(TARIF_SPP_BULAN);
-    
-    // --- KODE BARU: Bersihkan semua centang bulan ---
     document.querySelectorAll('.cek-bulan').forEach(cb => cb.checked = false);
     
     let tahunHijriyah = 1448; 
@@ -321,12 +298,15 @@ function openModalSpp(targetNis = null) {
         document.getElementById('spp_nis_nama').selectedIndex = 0; 
     }
     
+    window.history.pushState({ modal: 'formSpp' }, "", "#formSpp");
     document.getElementById('modalFormSpp').classList.remove('hidden');
 }
 
-function closeModalSpp() { document.getElementById('modalFormSpp').classList.add('hidden'); }
+function closeModalSpp() { 
+    document.getElementById('modalFormSpp').classList.add('hidden'); 
+    if (window.location.hash === "#formSpp") window.history.back();
+}
 
-// --- KODE YANG BENAR & BERSIH DARI DUPLIKASI ---
 document.getElementById('formInputSpp').addEventListener('submit', function(e) {
     e.preventDefault();
     const btnSubmit = this.querySelector('button[type="submit"]');
@@ -339,7 +319,6 @@ document.getElementById('formInputSpp').addEventListener('submit', function(e) {
     const kelas = document.getElementById('filterKelasSpp').value;
     const namaSantri = LOKAL_DATA_SANTRI.find(s => s.nis.toString() === nis)?.nama || '';
     
-    // KUNCI PERBAIKAN: nominal ditarik dan dibersihkan dari titik di sini
     const nominal = getAngkaMurni(document.getElementById('spp_nominal').value);
     const status = document.getElementById('spp_status').value;
     
@@ -349,17 +328,13 @@ document.getElementById('formInputSpp').addEventListener('submit', function(e) {
     } else {
         const tgl = document.getElementById('spp_tanggal').value;
         const thn = document.getElementById('spp_tahun').value;
-        
-        // Tarik semua nama bulan yang dicentang
         const arrayBulanDiceklis = Array.from(document.querySelectorAll('.cek-bulan:checked')).map(cb => cb.value);
         
-        // Peringatan jika admin lupa mencentang bulan satupun
         if (arrayBulanDiceklis.length === 0) {
             btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
             return Swal.fire('Perhatian', 'Mohon centang minimal 1 bulan yang akan dibayar!', 'warning');
         }
         
-        // Gabungkan menjadi teks (Contoh: "05 Muharram, Safar 1448")
         const gabunganBulan = arrayBulanDiceklis.join(", ");
         stringKeterangan = `${tgl} ${gabunganBulan} ${thn}`;
     }
@@ -382,7 +357,7 @@ document.getElementById('formInputSpp').addEventListener('submit', function(e) {
             closeModalSpp();
             Swal.fire({toast:true, position:'top-end', icon:'success', title:'Transaksi dicatat!', showConfirmButton:false, timer:2000});
             loadDataSpp();
-            loadBukuKas(); // <--- KODE DITAMBAHKAN DI SINI
+            loadBukuKas();
         } else Swal.fire('Gagal', res.message, 'error');
     }).catch(e => {
         showLoading(false);
@@ -392,7 +367,7 @@ document.getElementById('formInputSpp').addEventListener('submit', function(e) {
 });
 
 // =========================================================
-// FUNGSI MODAL RIWAYAT TRANSAKSI
+// MODAL RIWAYAT TRANSAKSI SPP (PER SANTRI)
 // =========================================================
 function bukaRiwayatSpp(nis, nama) {
     document.getElementById('riwayat_nama_santri').innerText = `${nis} - ${nama}`;
@@ -420,10 +395,14 @@ function bukaRiwayatSpp(nis, nama) {
         tbody.innerHTML = '<tr><td colspan="5" class="p-5 text-center text-gray-400 italic">Belum ada riwayat transaksi.</td></tr>';
     }
     
+    window.history.pushState({ modal: 'riwayatSpp' }, "", "#riwayatSpp");
     document.getElementById('modalRiwayatSpp').classList.remove('hidden');
 }
 
-function closeRiwayatSpp() { document.getElementById('modalRiwayatSpp').classList.add('hidden'); }
+function closeRiwayatSpp() { 
+    document.getElementById('modalRiwayatSpp').classList.add('hidden'); 
+    if (window.location.hash === "#riwayatSpp") window.history.back();
+}
 
 function hapusSpp(nis, keterangan) {
     Swal.fire({
@@ -442,7 +421,7 @@ function hapusSpp(nis, keterangan) {
                 if(res.status === 'success') {
                     Swal.fire({toast:true, position:'top-end', icon:'success', title:'Dihapus!', showConfirmButton:false, timer:1500});
                     loadDataSpp();
-                    loadBukuKas(); // <--- KODE DITAMBAHKAN DI SINI
+                    loadBukuKas();
                 } else Swal.fire('Gagal', res.message, 'error');
             }).catch(e => { showLoading(false); Swal.fire('Error', 'Koneksi gagal.', 'error'); });
         }
@@ -452,20 +431,6 @@ function hapusSpp(nis, keterangan) {
 // =========================================================
 // SISTEM BUKU KAS & PENGELUARAN (SALDO OTOMATIS)
 // =========================================================
-let SALDO_SAAT_INI = 0; // Variabel global pengunci saldo
-
-// Jalankan loadBukuKas setiap kali halaman dibuka
-document.addEventListener("DOMContentLoaded", () => {
-    loadBukuKas();
-});
-
-// Modifikasi fungsi initSpp() agar memuat saldo juga
-const originalInitSpp = initSpp;
-initSpp = function() {
-    originalInitSpp();
-    loadBukuKas();
-}
-
 function loadBukuKas() {
     const fd = new URLSearchParams();
     fd.append('action', 'getBukuKas');
@@ -475,7 +440,7 @@ function loadBukuKas() {
     .then(r => r.json())
     .then(res => {
         if(res.status === 'success') {
-            SALDO_SAAT_INI = res.saldo; // Simpan ke memori untuk validasi
+            SALDO_SAAT_INI = res.saldo; 
             
             document.getElementById('kas_pemasukan').innerText = formatRp(res.masuk);
             document.getElementById('kas_pengeluaran').innerText = formatRp(res.keluar);
@@ -484,25 +449,26 @@ function loadBukuKas() {
     }).catch(e => console.log("Gagal memuat buku kas", e));
 }
 
+// =========================================================
+// MODAL PENGELUARAN
+// =========================================================
 function openModalPengeluaran() {
     document.getElementById('formPengeluaran').reset();
-    
-    // Set tanggal hari ini otomatis
     document.getElementById('out_tanggal').valueAsDate = new Date();
     
+    window.history.pushState({ modal: 'pengeluaran' }, "", "#pengeluaran");
     document.getElementById('modalPengeluaran').classList.remove('hidden');
 }
 
 function closeModalPengeluaran() {
     document.getElementById('modalPengeluaran').classList.add('hidden');
+    if (window.location.hash === "#pengeluaran") window.history.back();
 }
 
 document.getElementById('formPengeluaran').addEventListener('submit', function(e) {
     e.preventDefault();
-    
     const nominalKeluar = getAngkaMurni(document.getElementById('out_nominal').value);
     
-    // VALIDASI OTOMATIS: Tolak jika minus
     if (nominalKeluar > SALDO_SAAT_INI) {
         return Swal.fire({
             icon: 'error',
@@ -529,7 +495,7 @@ document.getElementById('formPengeluaran').addEventListener('submit', function(e
     fd.append('tanggal', tanggal);
     fd.append('keterangan', keterangan);
     fd.append('nominal', nominalKeluar);
-    fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin'); // Nama penginput
+    fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin');
 
     fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
         showLoading(false);
@@ -538,7 +504,7 @@ document.getElementById('formPengeluaran').addEventListener('submit', function(e
         if (res.status === 'success') {
             closeModalPengeluaran();
             Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengeluaran dicatat!', showConfirmButton:false, timer:2000});
-            loadBukuKas(); // Refresh Saldo Seketika
+            loadBukuKas(); 
         } else {
             Swal.fire('Gagal', res.message, 'error');
         }
@@ -550,9 +516,8 @@ document.getElementById('formPengeluaran').addEventListener('submit', function(e
 });
 
 // =========================================================
-// FUNGSI LAPORAN BUKU KAS (PEMASUKAN & PENGELUARAN)
+// MODAL LAPORAN BUKU KAS (MASUK & KELUAR)
 // =========================================================
-
 function tarikLaporanKas() {
     const keyword = document.getElementById('lap_keyword').value;
     const jenis = document.getElementById('lap_jenis').value;
@@ -614,7 +579,6 @@ function cetakLaporanKas() {
     const areaTabel = document.getElementById('areaTabelKas');
     const tabelClone = areaTabel.cloneNode(true);
     
-    // Bersihkan kelas Tailwind
     tabelClone.removeAttribute('class');
     tabelClone.querySelectorAll('table, thead, tbody, tfoot, tr, th, td, span').forEach(el => el.removeAttribute('class'));
 
@@ -680,3 +644,45 @@ function cetakLaporanKas() {
     `);
     printWindow.document.close();
 }
+
+function openModalLaporanKas() {
+    window.history.pushState({ modal: 'laporanKas' }, "", "#laporanKas");
+    document.getElementById('modalLaporanKas').classList.remove('hidden');
+    if (document.getElementById('bodyLaporanKas').innerText.includes('Silakan klik tombol cari')) {
+        tarikLaporanKas();
+    }
+}
+
+function closeModalLaporanKas() {
+    document.getElementById('modalLaporanKas').classList.add('hidden');
+    if (window.location.hash === "#laporanKas") window.history.back();
+}
+
+// =========================================================
+// SINKRONISASI TOMBOL KEMBALI (BACK) PADA HP (POPSTATE)
+// =========================================================
+window.addEventListener('popstate', function(event) {
+    if (typeof Swal !== 'undefined' && Swal.isVisible()) {
+        Swal.close();
+        return; 
+    }
+
+    const modals = [
+        'modalFormSpp',
+        'modalRiwayatSpp',
+        'modalPengeluaran',
+        'modalLaporanKas'
+    ];
+
+    let isModalClosed = false;
+
+    modals.forEach(modalId => {
+        const modalEl = document.getElementById(modalId);
+        if (modalEl && !modalEl.classList.contains('hidden')) {
+            modalEl.classList.add('hidden');
+            isModalClosed = true;
+        }
+    });
+
+    if (isModalClosed) return;
+});
