@@ -140,23 +140,36 @@ function simpanSettingSpp() {
     
     if (nominal <= 0 || bulan <= 0) return Swal.fire('Perhatian', 'Isi nominal dan bulan dengan benar.', 'warning');
 
-    showLoading(true);
+    showLoading(true, "Menyimpan pengaturan...");
     const fd = new URLSearchParams();
     fd.append('action', 'saveSettingSpp');
     fd.append('token', sessionStorage.getItem('tokenMadasa'));
     fd.append('nominal', nominal);
     fd.append('bulan', bulan);
     
-    fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
+    fetch(GAS_URL, { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(res => {
         showLoading(false);
         if(res.status === 'success') {
-            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengaturan disimpan!', showConfirmButton:false, timer:2000});
+            Swal.fire({
+                toast: true, 
+                position: 'top-end', 
+                icon: 'success', 
+                title: 'Pengaturan berhasil disimpan!', 
+                showConfirmButton: false, 
+                timer: 2000
+            });
             TARIF_SPP_BULAN = nominal;
             JUMLAH_BULAN_SPP = bulan;
             TOTAL_TAGIHAN_SETAHUN = nominal * bulan;
+            kalkulasiTotalSppUi();
             if(document.getElementById('filterKelasSpp').value) loadDataSpp();
         }
-    }).catch(e => { showLoading(false); Swal.fire('Error', 'Gagal menyimpan.', 'error');});
+    }).catch(e => { 
+        showLoading(false); 
+        Swal.fire('Error', 'Gagal menyimpan ke server.', 'error');
+    });
 }
 
 // =========================================================
@@ -281,13 +294,22 @@ function openModalSpp(targetNis = null) {
     document.getElementById('spp_nominal').value = new Intl.NumberFormat('id-ID').format(TARIF_SPP_BULAN);
     document.querySelectorAll('.cek-bulan').forEach(cb => cb.checked = false);
     
-    let tahunHijriyah = 1448; 
+    // Ambil penanggalan Hijriyah Hari Ini secara otomatis (Tanggal & Tahun)
+    let hDay = "01", hYear = "1448"; 
     try {
-        const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { year: 'numeric' });
+        const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: '2-digit', year: 'numeric' });
         const parts = formatter.formatToParts(new Date());
-        parts.forEach(p => { if (p.type === 'year') tahunHijriyah = p.value; });
+        parts.forEach(p => { 
+            if (p.type === 'day') hDay = p.value.padStart(2, '0');
+            if (p.type === 'year') hYear = p.value; 
+        });
     } catch(e) {}
-    document.getElementById('spp_tahun').value = tahunHijriyah;
+    
+    // Setel otomatis ke dalam Form SPP
+    const selTgl = document.getElementById('spp_tanggal');
+    if (selTgl) selTgl.value = hDay;
+
+    document.getElementById('spp_tahun').value = hYear;
 
     toggleBintangPelajar(); 
     
@@ -454,7 +476,30 @@ function loadBukuKas() {
 // =========================================================
 function openModalPengeluaran() {
     document.getElementById('formPengeluaran').reset();
-    document.getElementById('out_tanggal').valueAsDate = new Date();
+    
+    // Ambil penanggalan Hijriyah Hari Ini secara otomatis
+    let hDay = "01", hMonthIdx = 1, hYear = "1448"; 
+    try {
+        const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: '2-digit', month: 'numeric', year: 'numeric' });
+        const parts = formatter.formatToParts(new Date());
+        parts.forEach(p => { 
+            if (p.type === 'day') hDay = p.value.padStart(2, '0');
+            if (p.type === 'month') hMonthIdx = parseInt(p.value);
+            if (p.type === 'year') hYear = p.value; 
+        });
+    } catch(e) {}
+
+    const namaBulanHijriyah = ["", "Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir", "Jumadil Awal", "Jumadil Akhir", "Rajab", "Sya'ban", "Ramadhan", "Syawal", "Dzulqa'dah", "Dzulhijjah"];
+    
+    // Setel otomatis ke dalam Form
+    const selTgl = document.getElementById('out_tgl');
+    if (selTgl) selTgl.value = hDay;
+    
+    const selBln = document.getElementById('out_bln');
+    if (selBln) selBln.value = namaBulanHijriyah[hMonthIdx];
+
+    const inThn = document.getElementById('out_thn');
+    if (inThn) inThn.value = hYear;
     
     window.history.pushState({ modal: 'pengeluaran' }, "", "#pengeluaran");
     document.getElementById('modalPengeluaran').classList.remove('hidden');
@@ -464,6 +509,61 @@ function closeModalPengeluaran() {
     document.getElementById('modalPengeluaran').classList.add('hidden');
     if (window.location.hash === "#pengeluaran") window.history.back();
 }
+
+document.getElementById('formPengeluaran').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nominalKeluar = getAngkaMurni(document.getElementById('out_nominal').value);
+    
+    if (nominalKeluar > SALDO_SAAT_INI) {
+        return Swal.fire({
+            icon: 'error',
+            title: 'Saldo Tidak Cukup!',
+            html: `Anda mencoba mengeluarkan <b>${formatRp(nominalKeluar)}</b>, <br>sedangkan saldo saat ini hanya <b>${formatRp(SALDO_SAAT_INI)}</b>.`
+        });
+    }
+
+    if (nominalKeluar <= 0) return Swal.fire('Perhatian', 'Nominal tidak valid', 'warning');
+
+    const btnSubmit = this.querySelector('button[type="submit"]');
+    const teksAsli = btnSubmit.innerHTML;
+    btnSubmit.disabled = true; 
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+
+    // Gabungkan Tanggal, Bulan, dan Tahun dari inputan baru
+    const tgl = document.getElementById('out_tgl').value;
+    const bln = document.getElementById('out_bln').value;
+    const thn = document.getElementById('out_thn').value;
+    const tanggalGabungan = `${tgl} ${bln} ${thn}`; // Hasil: e.g., "20 Muharram 1448"
+
+    const keterangan = document.getElementById('out_keterangan').value;
+    
+    showLoading(true, "Mencatat Pengeluaran...");
+
+    const fd = new URLSearchParams();
+    fd.append('action', 'addPengeluaran');
+    fd.append('token', sessionStorage.getItem('tokenMadasa'));
+    fd.append('tanggal', tanggalGabungan); // Mengirim format gabungan ke Google Apps Script
+    fd.append('keterangan', keterangan);
+    fd.append('nominal', nominalKeluar);
+    fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin');
+
+    fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
+        showLoading(false);
+        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
+        
+        if (res.status === 'success') {
+            closeModalPengeluaran();
+            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengeluaran dicatat!', showConfirmButton:false, timer:2000});
+            loadBukuKas(); 
+        } else {
+            Swal.fire('Gagal', res.message, 'error');
+        }
+    }).catch(e => {
+        showLoading(false);
+        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
+        Swal.fire('Error', 'Koneksi gagal.', 'error');
+    });
+});
 
 document.getElementById('formPengeluaran').addEventListener('submit', function(e) {
     e.preventDefault();
