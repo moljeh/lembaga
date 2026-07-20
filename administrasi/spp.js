@@ -79,11 +79,40 @@ function ambilMasterSantri() {
     .then(res => {
         if(res.status === 'success') {
             LOKAL_DATA_SANTRI = res.data;
+            
+            // Panggil fungsi untuk membuat daftar kelas otomatis dari database
+            buatDropdownKelasOtomatis();
+
             if (document.getElementById('filterKelasSpp').value) {
                 loadDataSpp();
             }
         }
     }).catch(e => console.log("Gagal muat master santri"));
+}
+
+// Fungsi Baru: Menyaring kelas yang ada di database & memasukkannya ke Dropdown
+function buatDropdownKelasOtomatis() {
+    const selectKelas = document.getElementById('filterKelasSpp');
+    if (!selectKelas) return;
+
+    // Simpan kelas yang sedang dipilih pengguna (agar tidak ter-reset saat data ditarik ulang)
+    const pilihanSaatIni = selectKelas.value;
+
+    // Ambil semua kelas dari data santri, hapus yang kosong, saring duplikat, lalu urutkan sesuai abjad A-Z
+    const kelasUnik = [...new Set(LOKAL_DATA_SANTRI.map(s => s.kelas).filter(k => k && k.trim() !== ''))].sort();
+
+    // Reset isi dropdown (bersihkan)
+    selectKelas.innerHTML = '<option value="" disabled selected>-- Pilih Kelas --</option>';
+
+    // Masukkan kembali daftar kelas yang sudah bersih ke dalam dropdown
+    kelasUnik.forEach(kelas => {
+        selectKelas.innerHTML += `<option value="${kelas}">${kelas}</option>`;
+    });
+
+    // Jika sebelumnya pengguna sudah memilih kelas, kembalikan pilihannya
+    if (pilihanSaatIni && kelasUnik.includes(pilihanSaatIni)) {
+        selectKelas.value = pilihanSaatIni;
+    }
 }
 
 function formatRp(angka) {
