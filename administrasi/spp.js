@@ -139,14 +139,17 @@ function buatDropdownKelasOtomatis() {
         return bobotA - bobotB;
     });
 
-    // 5. Susun elemen HTML <optgroup> sesuai urutan baru
+   // 5. Susun elemen HTML opsi sesuai urutan (Trik Pembatas untuk Mobile Native)
     let htmlOpsi = '<option value="" disabled selected>-- Pilih Kelas --</option>';
     kategoriUrut.forEach(kategori => {
-        htmlOpsi += `<optgroup label="${kategori}">`;
+        
+        // Buat opsi 'disabled' sebagai pengganti optgroup (berlaku sebagai judul/pemisah)
+        htmlOpsi += `<option value="" disabled> ━━━ ${kategori} ━━━ </option>`;
+        
         kelompokKelas[kategori].forEach(kelas => {
-            htmlOpsi += `<option value="${kelas}">${kelas}</option>`;
+            // Tambahkan spasi (menggunakan &nbsp;) agar kelas menjorok ke dalam (indentasi)
+            htmlOpsi += `<option value="${kelas}">&nbsp;&nbsp;&nbsp;&nbsp;${kelas}</option>`;
         });
-        htmlOpsi += `</optgroup>`;
     });
 
     selectKelas.innerHTML = htmlOpsi;
