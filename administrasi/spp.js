@@ -91,7 +91,7 @@ function ambilMasterSantri() {
 }
 
 
-// Fungsi untuk membuat daftar kelas otomatis dan berurutan dari TK hingga Aliyah
+// Fungsi untuk membuat daftar kelas otomatis berurutan dari TK hingga Aliyah
 function buatDropdownKelasOtomatis() {
     const selectKelas = document.getElementById('filterKelasSpp');
     if (!selectKelas) return;
@@ -109,7 +109,7 @@ function buatDropdownKelasOtomatis() {
         "ALIYAH": 4
     };
 
-    // 3. Kelompokkan kelas secara otomatis berdasarkan kata kunci nama kelas
+    // 3. Kelompokkan kelas secara otomatis berdasarkan kategori
     let kelompokKelas = {};
     kelasUnik.forEach(k => {
         let kUpper = k.toUpperCase();
@@ -132,14 +132,14 @@ function buatDropdownKelasOtomatis() {
         kelompokKelas[kategori].push(k);
     });
 
-    // Urutkan kategori berdasarkan bobot jenjang dari TK ke Aliyah
+    // 4. Urutkan kategori berdasarkan bobot dari TK ke Aliyah
     let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => {
         let bobotA = bobotJenjang[a] || 99;
         let bobotB = bobotJenjang[b] || 99;
         return bobotA - bobotB;
     });
 
-    // 4. Susun elemen HTML <optgroup> sesuai urutan baru
+    // 5. Susun elemen HTML <optgroup> sesuai urutan baru
     let htmlOpsi = '<option value="" disabled selected>-- Pilih Kelas --</option>';
     kategoriUrut.forEach(kategori => {
         htmlOpsi += `<optgroup label="${kategori}">`;
@@ -149,10 +149,8 @@ function buatDropdownKelasOtomatis() {
         htmlOpsi += `</optgroup>`;
     });
 
-    // Masukkan ke dropdown filter kelas SPP
     selectKelas.innerHTML = htmlOpsi;
 
-    // Jika sebelumnya pengguna sudah memilih kelas, kembalikan pilihannya
     if (pilihanSaatIni) {
         selectKelas.value = pilihanSaatIni;
     }
