@@ -2431,12 +2431,19 @@ function buatOpsiSemuaKelasOtomatis() {
     // 1. Ambil seluruh nama kelas unik dari data santri dan urutkan
     const kelasUnik = [...new Set(GLOBAL_DATA_SANTRI.map(s => s.kelas))].filter(Boolean).sort();
 
-    // 2. Kelompokkan secara otomatis berdasarkan kata kunci yang ada di nama kelas
+
+   // 2. Kelompokkan secara otomatis dengan menentukan bobot urutan jenjang
     let kelompokKelas = {};
+    let bobotJenjang = {
+        "TK / RA": 1,
+        "IBTIDAIYAH": 2,
+        "SANAWIYAH": 3,
+        "ALIYAH": 4
+    };
     
     kelasUnik.forEach(k => {
         let kUpper = k.toUpperCase();
-        let kategori = "LAINNYA"; // Kategori default jika tidak ada kata kunci khusus
+        let kategori = "LAINNYA";
 
         if (kUpper.includes('TK') || kUpper.includes('RA')) {
             kategori = "TK / RA";
@@ -2447,8 +2454,6 @@ function buatOpsiSemuaKelasOtomatis() {
         } else if (kUpper.includes('ALIYAH') || kUpper.includes('MA')) {
             kategori = "ALIYAH";
         } else {
-            // Jika ada tingkat baru (misal: "DINIYAH", "WUSTHA", dll), buat grupnya secara otomatis!
-            // Mengambil kata pertama dari nama kelas sebagai nama grup
             let kataPertama = k.split(/[\s-]+/)[0].toUpperCase();
             kategori = kataPertama;
         }
@@ -2459,15 +2464,22 @@ function buatOpsiSemuaKelasOtomatis() {
         kelompokKelas[kategori].push(k);
     });
 
-    // 3. Susun elemen HTML <optgroup> secara dinamis
+    // Urutkan kategori berdasarkan bobot jenjang pendidikan yang diinginkan
+    let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => {
+        let bobotA = bobotJenjang[a] || 99;
+        let bobotB = bobotJenjang[b] || 99;
+        return bobotA - bobotB;
+    });
+
+    // 3. Susun elemen HTML <optgroup> berdasarkan urutan baru
     let htmlOpsi = '';
-    for (const [kategori, daftarKelas] of Object.entries(kelompokKelas)) {
+    kategoriUrut.forEach(kategori => {
         htmlOpsi += `<optgroup label="${kategori}">`;
-        daftarKelas.forEach(k => {
+        kelompokKelas[kategori].forEach(k => {
             htmlOpsi += `<option value="${k}">${k}</option>`;
         });
         htmlOpsi += `</optgroup>`;
-    }
+    });
 
     // 4. Masukkan ke semua elemen dropdown yang ada di aplikasi
     const listDropdown = [

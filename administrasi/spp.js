@@ -90,27 +90,70 @@ function ambilMasterSantri() {
     }).catch(e => console.log("Gagal muat master santri"));
 }
 
-// Fungsi Baru: Menyaring kelas yang ada di database & memasukkannya ke Dropdown
+
+// Fungsi untuk membuat daftar kelas otomatis dan berurutan dari TK hingga Aliyah
 function buatDropdownKelasOtomatis() {
     const selectKelas = document.getElementById('filterKelasSpp');
     if (!selectKelas) return;
 
-    // Simpan kelas yang sedang dipilih pengguna (agar tidak ter-reset saat data ditarik ulang)
     const pilihanSaatIni = selectKelas.value;
 
-    // Ambil semua kelas dari data santri, hapus yang kosong, saring duplikat, lalu urutkan sesuai abjad A-Z
+    // 1. Ambil semua kelas unik dari data santri dan urutkan
     const kelasUnik = [...new Set(LOKAL_DATA_SANTRI.map(s => s.kelas).filter(k => k && k.trim() !== ''))].sort();
 
-    // Reset isi dropdown (bersihkan)
-    selectKelas.innerHTML = '<option value="" disabled selected>-- Pilih Kelas --</option>';
+    // 2. Tentukan bobot urutan jenjang pendidikan
+    let bobotJenjang = {
+        "TK / RA": 1,
+        "IBTIDAIYAH": 2,
+        "SANAWIYAH": 3,
+        "ALIYAH": 4
+    };
 
-    // Masukkan kembali daftar kelas yang sudah bersih ke dalam dropdown
-    kelasUnik.forEach(kelas => {
-        selectKelas.innerHTML += `<option value="${kelas}">${kelas}</option>`;
+    // 3. Kelompokkan kelas secara otomatis berdasarkan kata kunci nama kelas
+    let kelompokKelas = {};
+    kelasUnik.forEach(k => {
+        let kUpper = k.toUpperCase();
+        let kategori = "LAINNYA";
+
+        if (kUpper.includes('TK') || kUpper.includes('RA')) {
+            kategori = "TK / RA";
+        } else if (kUpper.includes('IBT') || kUpper.includes('IBTIDAIYAH')) {
+            kategori = "IBTIDAIYAH";
+        } else if (kUpper.includes('SANA') || kUpper.includes('SANAWIYAH') || kUpper.includes('MTS')) {
+            kategori = "SANAWIYAH";
+        } else if (kUpper.includes('ALIYAH') || kUpper.includes('MA')) {
+            kategori = "ALIYAH";
+        } else {
+            let kataPertama = k.split(/[\s-]+/)[0].toUpperCase();
+            kategori = kataPertama;
+        }
+
+        if (!kelompokKelas[kategori]) kelompokKelas[kategori] = [];
+        kelompokKelas[kategori].push(k);
     });
 
+    // Urutkan kategori berdasarkan bobot jenjang dari TK ke Aliyah
+    let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => {
+        let bobotA = bobotJenjang[a] || 99;
+        let bobotB = bobotJenjang[b] || 99;
+        return bobotA - bobotB;
+    });
+
+    // 4. Susun elemen HTML <optgroup> sesuai urutan baru
+    let htmlOpsi = '<option value="" disabled selected>-- Pilih Kelas --</option>';
+    kategoriUrut.forEach(kategori => {
+        htmlOpsi += `<optgroup label="${kategori}">`;
+        kelompokKelas[kategori].forEach(kelas => {
+            htmlOpsi += `<option value="${kelas}">${kelas}</option>`;
+        });
+        htmlOpsi += `</optgroup>`;
+    });
+
+    // Masukkan ke dropdown filter kelas SPP
+    selectKelas.innerHTML = htmlOpsi;
+
     // Jika sebelumnya pengguna sudah memilih kelas, kembalikan pilihannya
-    if (pilihanSaatIni && kelasUnik.includes(pilihanSaatIni)) {
+    if (pilihanSaatIni) {
         selectKelas.value = pilihanSaatIni;
     }
 }

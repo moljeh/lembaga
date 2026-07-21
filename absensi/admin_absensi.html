@@ -22,8 +22,20 @@
     
     <style>
         body { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
-       .id-card-container { width: 55mm; height: 85mm; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 6px; position: relative; background-color: white; display: flex; flex-direction: column; align-items: center; overflow: hidden; margin: 0 auto; }
+        .id-card-container { width: 55mm; height: 85mm; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 6px; position: relative; background-color: white; display: flex; flex-direction: column; align-items: center; overflow: hidden; margin: 0 auto; }
        
+        /* CSS TAMBAHAN UNTUK GARIS PEMISAH ANTAR JENJANG KELAS */
+        optgroup {
+            margin-top: 8px;
+            padding-top: 4px;
+            border-top: 1px dashed #cbd5e1;
+            font-style: normal;
+        }
+        optgroup label {
+            font-weight: 700;
+            color: #047857;
+        }
+
        @media print {
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             @page { size: 215mm 330mm; margin: 10mm; } 
@@ -94,20 +106,18 @@
         </div>
     </div>
 
-<!-- AREA 1: PENGATURAN (Diperbarui agar lebih rapi & modern) -->
+<!-- AREA 1: PENGATURAN -->
   <div id="areaPengaturan" class="max-w-5xl mx-auto no-print">
         <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100">
             
-            <!-- Header Section -->
             <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
                 <div>
                     <h2 class="text-lg sm:text-xl font-heading font-bold text-gray-800">Pengaturan Absensi</h2>
                     <p class="text-xs text-gray-500 mt-1">Atur status dan jam operasional absensi harian.</p>
                 </div>
-                <span id="badgeStatus" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 shadow-sm border border-gray-200"><i class="fas fa-sync fa-spin mr-1"></i> Memuat...</span>
+                <span id="badgeStatus" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 shadow-sm border border-gray-200 whitespace-nowrap shrink-0"><i class="fas fa-sync fa-spin mr-1"></i> Memuat...</span>
             </div>
 
-            <!-- Bagian 1: Kontrol Buka/Tutup -->
             <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100 mb-6">
                 <label class="text-sm font-bold text-gray-700 block mb-1"><i class="fas fa-toggle-on text-emerald-600 mr-2"></i>Status Operasional</label>
                 <p class="text-[11px] text-gray-500 mb-4">Masukkan keterangan jika ingin menutup/meliburkan absensi hari ini.</p>
@@ -124,7 +134,6 @@
                 </div>
             </div>
 
-            <!-- Bagian 2: Pengaturan Jam -->
             <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100">
                 <label class="text-sm font-bold text-blue-800 block mb-1"><i class="fas fa-clock mr-2"></i>Jam Buka-Tutup Scanner</label>
                 <p class="text-[11px] text-blue-600 mb-4">Gunakan format 24 jam (Misal: 12 untuk jam 12 siang).</p>
@@ -188,12 +197,12 @@
                             <option value="" disabled selected>Memuat bulan...</option>
                         </select>
                     </div>
-                   <div>
-    <label class="block text-sm font-bold text-emerald-800 mb-2">Pilih Kelas:</label>
-    <select id="filterKelasRekap" class="w-full p-3 border border-emerald-300 rounded-xl focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700">
-        <option value="" disabled selected>-- Silakan Pilih Kelas --</option>
-    </select>
-</div>
+                    <div>
+                        <label class="block text-sm font-bold text-emerald-800 mb-2">Pilih Kelas:</label>
+                        <select id="filterKelasRekap" class="w-full p-3 border border-emerald-300 rounded-xl focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700">
+                            <option value="" disabled selected>-- Silakan Pilih Kelas --</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-center w-full gap-2">
@@ -246,7 +255,8 @@
             document.getElementById('loadingScreen').style.display = show ? 'flex' : 'none'; 
             document.getElementById('teksLoading').innerText = teks;
         }
-window.onload = () => {
+
+        window.onload = () => {
             showLoading(true, "Memuat Data Santri...");
             muatBulanTersedia(); 
             cekStatusSistemAwal(); 
@@ -265,7 +275,7 @@ window.onload = () => {
                         DATA_SANTRI = res.data;
                         renderIdCards();
                         
-                        // --- PANGGIL FUNGSI PEMBUAT DROPDOWN KELAS OTOMATIS DI SINI ---
+                        // --- PANGGIL FUNGSI PEMBUAT DROPDOWN KELAS OTOMATIS BERURUTAN ---
                         buatOpsiKelasDinamisAbsensi();
                         
                     } else {
@@ -282,13 +292,21 @@ window.onload = () => {
         }
 
         // ==========================================================
-        // FUNGSI MEMBUAT OPSI KELAS OTOMATIS SESUAI DATABASE
+        // FUNGSI MEMBUAT OPSI KELAS OTOMATIS & BERURUTAN SESUAI DATABASE
         // ==========================================================
         function buatOpsiKelasDinamisAbsensi() {
             // 1. Ambil seluruh nama kelas unik dari data santri dan urutkan
             const kelasUnik = [...new Set(DATA_SANTRI.map(s => s.kelas))].filter(Boolean).sort();
 
-            // 2. Kelompokkan secara otomatis berdasarkan kata kunci nama kelas
+            // 2. Tentukan bobot urutan jenjang pendidikan
+            let bobotJenjang = {
+                "TK / RA": 1,
+                "IBTIDAIYAH": 2,
+                "SANAWIYAH": 3,
+                "ALIYAH": 4
+            };
+
+            // 3. Kelompokkan secara otomatis berdasarkan kata kunci nama kelas
             let kelompokKelas = {};
             kelasUnik.forEach(k => {
                 let kUpper = k.toUpperCase();
@@ -311,23 +329,29 @@ window.onload = () => {
                 kelompokKelas[kategori].push(k);
             });
 
-            // 3. Susun elemen HTML <optgroup>
+            // Urutkan kategori berdasarkan bobot jenjang dari TK ke Aliyah
+            let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => {
+                let bobotA = bobotJenjang[a] || 99;
+                let bobotB = bobotJenjang[b] || 99;
+                return bobotA - bobotB;
+            });
+
+            // 4. Susun elemen HTML <optgroup> sesuai urutan baru
             let htmlOpsi = '';
-            for (const [kategori, daftarKelas] of Object.entries(kelompokKelas)) {
+            kategoriUrut.forEach(kategori => {
                 htmlOpsi += `<optgroup label="${kategori}">`;
-                daftarKelas.forEach(k => {
+                kelompokKelas[kategori].forEach(k => {
                     htmlOpsi += `<option value="${k}">${k}</option>`;
                 });
                 htmlOpsi += `</optgroup>`;
-            }
+            });
 
-            // 4. Masukkan ke dropdown Rekap dan Manual
-            const dropdownIds = ['filterKelasRekap', 'filterKelasManual'];
+            // 5. Masukkan ke dropdown Rekap
+            const dropdownIds = ['filterKelasRekap'];
             dropdownIds.forEach(id => {
                 const elemen = document.getElementById(id);
                 if (elemen) {
-                    const defaultText = id === 'filterKelasRekap' ? '-- Silakan Pilih Kelas --' : '-- Silakan Pilih Kelas --';
-                    elemen.innerHTML = `<option value="" disabled selected>${defaultText}</option>` + htmlOpsi;
+                    elemen.innerHTML = `<option value="" disabled selected>-- Silakan Pilih Kelas --</option>` + htmlOpsi;
                 }
             });
         }
@@ -478,13 +502,13 @@ window.onload = () => {
             }).catch(e => console.log('Gagal cek status sistem:', e));
         }
 
-     function renderBadgeStatus(status) {
+        function renderBadgeStatus(status) {
             const badge = document.getElementById('badgeStatus');
             if(status === 'Libur') {
-                badge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-700 shadow-sm border border-red-200';
+                badge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-700 shadow-sm border border-red-200 whitespace-nowrap shrink-0';
                 badge.innerHTML = '<i class="fas fa-lock mr-1"></i> STATUS: TUTUP';
             } else {
-                badge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200';
+                badge.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-700 shadow-sm border border-red-200 whitespace-nowrap shrink-0';
                 badge.innerHTML = '<i class="fas fa-unlock mr-1"></i> STATUS: BUKA';
             }
         }

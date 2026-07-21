@@ -22,6 +22,18 @@
     
     <style>
         body { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
+
+        /* CSS TAMBAHAN UNTUK GARIS PEMISAH & JARAK ANTAR JENJANG */
+        optgroup {
+            margin-top: 8px;
+            padding-top: 4px;
+            border-top: 1px dashed #cbd5e1;
+            font-style: normal;
+        }
+        optgroup label {
+            font-weight: 700;
+            color: #047857;
+        }
     </style>
 </head>
 <body class="text-gray-800 p-4 sm:p-8">
@@ -88,7 +100,6 @@
             
             <div class="mb-5 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
                 <label class="block text-sm font-bold text-emerald-800 mb-2">Pilih Kelas:</label>
-                <!-- PERUBAHAN: Dropdown dikosongkan agar terisi otomatis secara dinamis -->
                 <select id="filterKelasManual" onchange="renderTabelManual()" class="w-full p-3.5 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700 shadow-sm transition-all">
                     <option value="" disabled selected>-- Silakan Pilih Kelas --</option>
                 </select>
@@ -170,7 +181,7 @@
                     DATA_SANTRI = res.data;
                     mulaiScanner(); 
                     
-                    // --- PANGGIL FUNGSI PEMBUAT DROPDOWN KELAS OTOMATIS ---
+                    // --- PANGGIL FUNGSI PEMBUAT DROPDOWN KELAS OTOMATIS & BERURUTAN ---
                     buatOpsiKelasDinamisAbsensi();
                 } else {
                     Swal.fire('Peringatan', 'Data santri kosong.', 'warning');
@@ -183,7 +194,7 @@
         }
 
         // ==========================================================
-        // FUNGSI MEMBUAT OPSI KELAS OTOMATIS SESUAI DATABASE
+        // FUNGSI MEMBUAT OPSI KELAS OTOMATIS & BERURUTAN SESUAI DATABASE
         // ==========================================================
         function buatOpsiKelasDinamisAbsensi() {
             const selectKelas = document.getElementById('filterKelasManual');
@@ -192,7 +203,15 @@
             // 1. Ambil seluruh nama kelas unik dari data santri dan urutkan
             const kelasUnik = [...new Set(DATA_SANTRI.map(s => s.kelas))].filter(Boolean).sort();
 
-            // 2. Kelompokkan secara otomatis berdasarkan kata kunci nama kelas
+            // 2. Tentukan bobot urutan jenjang pendidikan
+            let bobotJenjang = {
+                "TK / RA": 1,
+                "IBTIDAIYAH": 2,
+                "SANAWIYAH": 3,
+                "ALIYAH": 4
+            };
+
+            // 3. Kelompokkan secara otomatis berdasarkan kata kunci nama kelas
             let kelompokKelas = {};
             kelasUnik.forEach(k => {
                 let kUpper = k.toUpperCase();
@@ -215,17 +234,24 @@
                 kelompokKelas[kategori].push(k);
             });
 
-            // 3. Susun elemen HTML <optgroup>
+            // Urutkan kategori berdasarkan bobot jenjang dari TK ke Aliyah
+            let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => {
+                let bobotA = bobotJenjang[a] || 99;
+                let bobotB = bobotJenjang[b] || 99;
+                return bobotA - bobotB;
+            });
+
+            // 4. Susun elemen HTML <optgroup> sesuai urutan baru
             let htmlOpsi = '';
-            for (const [kategori, daftarKelas] of Object.entries(kelompokKelas)) {
+            kategoriUrut.forEach(kategori => {
                 htmlOpsi += `<optgroup label="${kategori}">`;
-                daftarKelas.forEach(k => {
+                kelompokKelas[kategori].forEach(k => {
                     htmlOpsi += `<option value="${k}">${k}</option>`;
                 });
                 htmlOpsi += `</optgroup>`;
-            }
+            });
 
-            // 4. Masukkan ke dropdown manual
+            // 5. Masukkan ke dropdown manual
             selectKelas.innerHTML = '<option value="" disabled selected>-- Silakan Pilih Kelas --</option>' + htmlOpsi;
         }
 
