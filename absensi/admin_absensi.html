@@ -188,15 +188,12 @@
                             <option value="" disabled selected>Memuat bulan...</option>
                         </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-bold text-emerald-800 mb-2">Pilih Kelas:</label>
-                        <select id="filterKelasRekap" class="w-full p-3 border border-emerald-300 rounded-xl focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700">
-                            <option value="" disabled selected>-- Silakan Pilih Kelas --</option>
-                            <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                            <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                            <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                        </select>
-                    </div>
+                   <div>
+    <label class="block text-sm font-bold text-emerald-800 mb-2">Pilih Kelas:</label>
+    <select id="filterKelasRekap" class="w-full p-3 border border-emerald-300 rounded-xl focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700">
+        <option value="" disabled selected>-- Silakan Pilih Kelas --</option>
+    </select>
+</div>
                 </div>
 
                 <div class="flex items-center justify-center w-full gap-2">
@@ -249,8 +246,7 @@
             document.getElementById('loadingScreen').style.display = show ? 'flex' : 'none'; 
             document.getElementById('teksLoading').innerText = teks;
         }
-
-        window.onload = () => {
+window.onload = () => {
             showLoading(true, "Memuat Data Santri...");
             muatBulanTersedia(); 
             cekStatusSistemAwal(); 
@@ -268,6 +264,10 @@
                     if(res.status === 'success') {
                         DATA_SANTRI = res.data;
                         renderIdCards();
+                        
+                        // --- PANGGIL FUNGSI PEMBUAT DROPDOWN KELAS OTOMATIS DI SINI ---
+                        buatOpsiKelasDinamisAbsensi();
+                        
                     } else {
                         Swal.fire('Peringatan', res.message || 'Data santri kosong.', 'warning');
                     }
@@ -278,6 +278,57 @@
             .catch(e => { 
                 showLoading(false); 
                 Swal.fire('Error Koneksi', 'Gagal memuat data santri. Pastikan internet stabil.', 'error'); 
+            });
+        }
+
+        // ==========================================================
+        // FUNGSI MEMBUAT OPSI KELAS OTOMATIS SESUAI DATABASE
+        // ==========================================================
+        function buatOpsiKelasDinamisAbsensi() {
+            // 1. Ambil seluruh nama kelas unik dari data santri dan urutkan
+            const kelasUnik = [...new Set(DATA_SANTRI.map(s => s.kelas))].filter(Boolean).sort();
+
+            // 2. Kelompokkan secara otomatis berdasarkan kata kunci nama kelas
+            let kelompokKelas = {};
+            kelasUnik.forEach(k => {
+                let kUpper = k.toUpperCase();
+                let kategori = "LAINNYA";
+
+                if (kUpper.includes('TK') || kUpper.includes('RA')) {
+                    kategori = "TK / RA";
+                } else if (kUpper.includes('IBT') || kUpper.includes('IBTIDAIYAH')) {
+                    kategori = "IBTIDAIYAH";
+                } else if (kUpper.includes('SANA') || kUpper.includes('SANAWIYAH') || kUpper.includes('MTS')) {
+                    kategori = "SANAWIYAH";
+                } else if (kUpper.includes('ALIYAH') || kUpper.includes('MA')) {
+                    kategori = "ALIYAH";
+                } else {
+                    let kataPertama = k.split(/[\s-]+/)[0].toUpperCase();
+                    kategori = kataPertama;
+                }
+
+                if (!kelompokKelas[kategori]) kelompokKelas[kategori] = [];
+                kelompokKelas[kategori].push(k);
+            });
+
+            // 3. Susun elemen HTML <optgroup>
+            let htmlOpsi = '';
+            for (const [kategori, daftarKelas] of Object.entries(kelompokKelas)) {
+                htmlOpsi += `<optgroup label="${kategori}">`;
+                daftarKelas.forEach(k => {
+                    htmlOpsi += `<option value="${k}">${k}</option>`;
+                });
+                htmlOpsi += `</optgroup>`;
+            }
+
+            // 4. Masukkan ke dropdown Rekap dan Manual
+            const dropdownIds = ['filterKelasRekap', 'filterKelasManual'];
+            dropdownIds.forEach(id => {
+                const elemen = document.getElementById(id);
+                if (elemen) {
+                    const defaultText = id === 'filterKelasRekap' ? '-- Silakan Pilih Kelas --' : '-- Silakan Pilih Kelas --';
+                    elemen.innerHTML = `<option value="" disabled selected>${defaultText}</option>` + htmlOpsi;
+                }
             });
         }
 
