@@ -22,7 +22,7 @@
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-emerald-600"></div>
     </div>
 
-    <!-- Header & Navigasi Atas -->
+    <!-- Header & Navigasi Atas (Lebih Ringkas) -->
     <header class="bg-white shadow-sm border-b border-gray-100 z-50 sticky top-0 p-3 sm:px-6 flex items-center justify-between">
         <div class="flex items-center gap-3 flex-1 min-w-0">
             <img src="../asset/logo.png" class="w-8 h-8 sm:w-10 sm:h-10 object-contain drop-shadow-md" alt="Logo Madrasah" onerror="this.style.display='none'">
@@ -38,7 +38,7 @@
 
     <main class="max-w-6xl mx-auto p-4 sm:p-6 space-y-6">
         
-        <!-- Banner Waktu & Judul -->
+        <!-- Banner Waktu & Judul (Digabung & Lebih Ringkas) -->
         <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-4 sm:p-5 text-white shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
             <i class="fas fa-wallet absolute -right-4 -bottom-6 text-emerald-800 opacity-30" style="font-size: 6rem;"></i>
             
@@ -59,8 +59,10 @@
             </div>
         </div>
 		
-		<!-- Kartu Kas & Saldo -->
+		<!-- KARTU INFORMASI BUKU KAS & SALDO (Sejajar Kiri Kanan & Memanjang) -->
         <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-6 mt-6">
+            
+            <!-- Kartu Pemasukan (Kiri) -->
             <div class="bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-emerald-100 flex items-center justify-between hover:-translate-y-1 hover:shadow-md transition-all duration-300">
                 <div class="min-w-0 pr-2">
                     <p class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 truncate">Total Pemasukan SPP</p>
@@ -71,6 +73,7 @@
                 </div>
             </div>
             
+            <!-- Kartu Pengeluaran (Kanan) -->
             <div class="bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-red-100 flex items-center justify-between hover:-translate-y-1 hover:shadow-md transition-all duration-300">
                 <div class="min-w-0 pr-2">
                     <p class="text-[10px] sm:text-xs text-gray-500 font-bold mb-1 truncate">Total Pengeluaran</p>
@@ -81,18 +84,100 @@
                 </div>
             </div>
 
-            <div class="col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 relative overflow-hidden hover:shadow-md transition-all duration-300">
-                <i class="fas fa-wallet absolute right-4 top-4 text-5xl text-emerald-50 transform -rotate-12"></i>
-                <div class="relative z-10">
-                    <p class="text-xs text-gray-500 font-bold mb-1">SALDO SAAT INI</p>
-                    <h3 class="text-2xl sm:text-3xl font-bold tracking-wide mb-4 text-emerald-600" id="kas_saldo">Rp 0</h3>
-                    <div class="flex gap-2">
-                        <button onclick="openModalPengeluaran()" class="flex-1 text-xs bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 font-bold py-2.5 px-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5">
-                            <i class="fas fa-minus-circle"></i> Pengeluaran
-                        </button>
-                        <button onclick="openModalLaporanKas()" class="flex-1 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-700 font-bold py-2.5 px-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5">
-                            <i class="fas fa-book"></i> Buku Kas
-                        </button>
+<!-- Kartu Saldo (Memanjang Penuh 2 Kolom di Bawahnya - Tema Putih) -->
+    <div class="col-span-2 bg-white p-5 rounded-2xl shadow-sm border border-emerald-100 relative overflow-hidden hover:shadow-md transition-all duration-300">
+        <i class="fas fa-wallet absolute right-4 top-4 text-5xl text-emerald-50 transform -rotate-12"></i>
+        <div class="relative z-10">
+            <p class="text-xs text-gray-500 font-bold mb-1">SALDO SAAT INI</p>
+            <h3 class="text-2xl sm:text-3xl font-bold tracking-wide mb-4 text-emerald-600" id="kas_saldo">Rp 0</h3>
+            <div class="flex gap-2">
+                <button onclick="openModalPengeluaran()" class="flex-1 text-xs bg-red-50 hover:bg-red-100 border border-red-100 text-red-600 font-bold py-2.5 px-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5">
+                    <i class="fas fa-minus-circle"></i> Pengeluaran
+                </button>
+                <button onclick="openModalLaporanKas()" class="flex-1 text-xs bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 text-emerald-700 font-bold py-2.5 px-2 rounded-xl shadow-sm transition-all flex items-center justify-center gap-1.5">
+                    <i class="fas fa-book"></i> Buku Kas
+                </button>
+            </div>
+        </div>
+    </div>
+            
+        </div>
+
+<!-- MODAL FORM PENGELUARAN -->
+        <div id="modalPengeluaran" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4">
+            <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 transform transition-all">
+                <div class="flex justify-between items-center border-b pb-3 mb-4">
+                    <h3 class="text-lg font-heading font-bold text-red-600"><i class="fas fa-receipt mr-2"></i>Catat Pengeluaran</h3>
+                    <button onclick="closeModalPengeluaran()" class="text-gray-400 hover:text-red-500 transition-all"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <form id="formPengeluaran" class="space-y-4">
+                    
+                    <!-- Input Tanggal Hijriyah yang Baru -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Tanggal Pengeluaran (Hijriyah)</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <!-- Dropdown Tanggal -->
+                            <select id="out_tgl" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none" required>
+                                <option value="01">01</option><option value="02">02</option><option value="03">03</option><option value="04">04</option><option value="05">05</option><option value="06">06</option><option value="07">07</option><option value="08">08</option><option value="09">09</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option><option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option><option value="21">21</option><option value="22">22</option><option value="23">23</option><option value="24">24</option><option value="25">25</option><option value="26">26</option><option value="27">27</option><option value="28">28</option><option value="29">29</option><option value="30">30</option><option value="31">31</option>
+                            </select>
+                            <!-- Dropdown Bulan -->
+                            <select id="out_bln" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none" required>
+                                <option value="Muharram">Muharram</option><option value="Safar">Safar</option><option value="Rabiul Awal">Rabiul Awal</option><option value="Rabiul Akhir">Rabiul Akhir</option><option value="Jumadil Awal">Jumadil Awal</option><option value="Jumadil Akhir">Jumadil Akhir</option><option value="Rajab">Rajab</option><option value="Sya'ban">Sya'ban</option><option value="Ramadhan">Ramadhan</option><option value="Syawal">Syawal</option><option value="Dzulqa'dah">Dzulqa'dah</option><option value="Dzulhijjah">Dzulhijjah</option>
+                            </select>
+                            <!-- Input Tahun -->
+                            <input type="number" id="out_thn" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-red-500 outline-none" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Keterangan / Keperluan</label>
+                        <textarea id="out_keterangan" rows="2" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-red-500" placeholder="Contoh: Beli alat kebersihan" required></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Nominal Keluar (Rp)</label>
+                        <input type="text" id="out_nominal" oninput="formatInputRupiah(this)" class="w-full p-3 border border-red-300 rounded-xl font-bold text-red-600 bg-red-50 outline-none focus:ring-2 focus:ring-red-500" placeholder="Contoh: 50.000" required>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-4 border-t mt-6">
+                        <button type="button" onclick="closeModalPengeluaran()" class="px-4 py-2 border rounded-xl text-gray-600 hover:bg-gray-50 font-semibold text-sm">Batal</button>
+                        <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-sm shadow-sm"><i class="fas fa-save mr-2"></i> Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+		
+        <!-- Info Ketetapan SPP Dinamis -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-center mb-4 border-b pb-3">
+                <h3 class="font-bold text-gray-700"><i class="fas fa-cog text-gray-400 mr-2"></i>Pengaturan Ketetapan SPP</h3>
+                <div class="flex gap-2 mt-3 sm:mt-0">
+                    <button onclick="clearSettingSpp()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-lg text-xs transition-all"><i class="fas fa-undo mr-1"></i> Bersihkan</button>
+                    <button onclick="simpanSettingSpp()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition-all shadow-sm"><i class="fas fa-save mr-1"></i> Simpan Pengaturan</button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Input Nominal -->
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl flex-shrink-0"><i class="fas fa-money-bill-wave"></i></div>
+                    <div class="w-full">
+                        <label class="text-xs text-gray-500 font-bold block mb-1">Nominal per Bulan (Rp)</label>
+                        <input type="text" id="input_tarif_spp" oninput="formatInputRupiah(this); kalkulasiTotalSppUi()" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-gray-800" placeholder="Contoh: 15.000">
+                    </div>
+                </div>
+                <!-- Input Bulan -->
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xl flex-shrink-0"><i class="fas fa-calendar-check"></i></div>
+                    <div class="w-full">
+                        <label class="text-xs text-gray-500 font-bold block mb-1">Target Waktu (Bulan)</label>
+                        <input type="number" id="input_bulan_spp" oninput="kalkulasiTotalSppUi()" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-gray-800" placeholder="Contoh: 11">
+                    </div>
+                </div>
+                <!-- Tampilan Total -->
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-xl flex-shrink-0"><i class="fas fa-file-invoice-dollar"></i></div>
+                    <div>
+                        <p class="text-xs text-gray-500 font-bold">Total Tagihan 1 Tahun</p>
+                        <h3 class="text-lg font-bold text-gray-800 mt-1" id="info_spp_total">Rp 0</h3>
                     </div>
                 </div>
             </div>
@@ -100,18 +185,19 @@
 
         <!-- Area Kontrol (Filter Kelas & Tambah Data) -->
         <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-4 justify-between items-center">
-            <div class="w-full sm:w-1/2">
-                <label class="block text-xs font-bold text-gray-700 mb-1">Filter Berdasarkan Kelas:</label>
-                <select id="filterKelasSpp" onchange="loadDataSpp()" class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-bold text-emerald-800 bg-emerald-50">
-                    <option value="" disabled selected>-- Pilih Kelas --</option>
-                </select>
-            </div>
+<div class="w-full sm:w-1/2">
+    <label class="block text-xs font-bold text-gray-700 mb-1">Filter Berdasarkan Kelas:</label>
+    <select id="filterKelasSpp" onchange="loadDataSpp()" class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-bold text-emerald-800 bg-emerald-50">
+        <option value="" disabled selected>-- Pilih Kelas --</option>
+        <!-- Opsi kelas sekarang akan diisi otomatis oleh JavaScript dari Database -->
+    </select>
+</div>
             <button onclick="openModalSpp('tambah')" class="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
                 <i class="fas fa-plus"></i> Tambah / Perbarui SPP
             </button>
         </div>
 
-        <!-- Tabel Data SPP -->
+        <!-- Tabel Data SPP dengan Sticky Header -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden relative">
             <div class="overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar">
                 <table class="w-full text-left text-sm whitespace-nowrap">
@@ -127,6 +213,7 @@
                         </tr>
                     </thead>
                     <tbody id="bodyTabelSpp" class="divide-y divide-gray-100">
+                        <!-- Data akan di-render di sini oleh JavaScript -->
                         <tr>
                             <td colspan="7" class="p-10 text-center text-gray-400">
                                 <i class="fas fa-folder-open text-4xl mb-3 text-gray-300 block"></i>
@@ -137,15 +224,93 @@
                 </table>
             </div>
         </div>
+		
+<!-- MODAL LAPORAN BUKU KAS -->
+<div id="modalLaporanKas" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl p-6 transform transition-all flex flex-col max-h-[95vh]">
+        
+        <!-- Header Modal -->
+        <div class="flex justify-between items-center border-b pb-3 mb-4">
+            <div>
+                <h3 class="text-lg font-heading font-bold text-gray-800">
+                    <i class="fas fa-book text-emerald-600 mr-2"></i>Buku Kas Umum
+                </h3>
+                <p class="text-xs text-gray-500 mt-1">Laporan gabungan pemasukan SPP dan pengeluaran.</p>
+            </div>
+            <button onclick="closeModalLaporanKas()" class="text-gray-400 hover:text-red-500 transition-all"><i class="fas fa-times text-xl"></i></button>
+        </div>
+
+        <!-- Area Isi Modal (Bisa di-scroll jika panjang) -->
+        <div class="overflow-y-auto flex-1 pr-2">
+            
+            <!-- Filter Pencarian -->
+            <div class="flex flex-col sm:flex-row gap-4 mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div class="w-full sm:w-1/2">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Pencarian (Ketik Bulan/Tahun)</label>
+                    <input type="text" id="lap_keyword" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium" placeholder="Contoh: Muharram, 1448...">
+                </div>
+                <div class="w-full sm:w-1/4">
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Jenis Transaksi</label>
+                    <select id="lap_jenis" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-medium">
+                        <option value="Semua">Semua (Masuk & Keluar)</option>
+                        <option value="Masuk">Pemasukan Saja</option>
+                        <option value="Keluar">Pengeluaran Saja</option>
+                    </select>
+                </div>
+            <div class="flex items-end w-full sm:w-auto gap-2 shrink-0">
+                    <button onclick="tarikLaporanKas()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm transition-all shadow-sm whitespace-nowrap">
+                        <i class="fas fa-search"></i> Cari
+                    </button>
+                    <button onclick="cetakLaporanKas()" class="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm transition-all shadow-sm whitespace-nowrap" title="Cetak Laporan">
+                        <i class="fas fa-print"></i> Cetak
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabel Rekap Buku Kas -->
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm" id="areaTabelKas">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-gray-100 text-gray-700 text-xs uppercase border-b border-gray-200">
+                        <tr>
+                            <th class="p-3 text-center w-10">No</th>
+                            <th class="p-3">Tanggal / Uraian Rincian</th>
+                            <th class="p-3 text-center">Jenis</th>
+                            <th class="p-3 text-right">Pemasukan</th>
+                            <th class="p-3 text-right">Pengeluaran</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyLaporanKas" class="divide-y divide-gray-100">
+                        <tr><td colspan="5" class="p-6 text-center text-gray-400">Silakan klik tombol cari untuk memuat data.</td></tr>
+                    </tbody>
+                    <tfoot class="bg-gray-50 border-t-2 border-gray-200">
+                        <tr>
+                            <td colspan="3" class="p-3 text-right font-bold text-gray-800">TOTAL PERIODE INI :</td>
+                            <td class="p-3 text-right font-bold text-emerald-600" id="lap_tot_masuk">Rp 0</td>
+                            <td class="p-3 text-right font-bold text-red-600" id="lap_tot_keluar">Rp 0</td>
+                        </tr>
+                        <tr class="bg-emerald-50 border-t border-emerald-200">
+                            <td colspan="3" class="p-3 text-right font-bold text-emerald-900">SALDO BERSIH :</td>
+                            <td colspan="2" class="p-3 text-right font-bold text-emerald-700 text-base" id="lap_tot_saldo">Rp 0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+		
     </main>
 
     <!-- Modal Form Input / Edit SPP -->
     <div id="modalFormSpp" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 transform transition-all max-h-[95vh] overflow-y-auto">
+            
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <h3 id="judulModalSpp" class="text-lg font-heading font-bold text-gray-800">Form Pembayaran SPP</h3>
                 <button onclick="closeModalSpp()" class="text-gray-400 hover:text-red-500 transition-all"><i class="fas fa-times text-xl"></i></button>
             </div>
+           
             <form id="formInputSpp" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Pilih Nama Santri</label>
@@ -153,6 +318,7 @@
                         <option value="" disabled selected>-- Pilih Santri --</option>
                     </select>
                 </div>
+
                 <!-- Ceklis Bintang Pelajar -->
                 <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-3">
                     <input type="checkbox" id="cek_bintang_pelajar" class="w-5 h-5 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer" onchange="toggleBintangPelajar()">
@@ -217,8 +383,38 @@
             </form>
         </div>
     </div>
+	
+	<!-- Modal Riwayat Transaksi -->
+    <div id="modalRiwayatSpp" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 transform transition-all flex flex-col max-h-[90vh]">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <div>
+                    <h3 class="text-lg font-heading font-bold text-gray-800">Riwayat Pembayaran SPP</h3>
+                    <p id="riwayat_nama_santri" class="text-sm text-emerald-600 font-bold mt-1">-</p>
+                </div>
+                <button onclick="closeRiwayatSpp()" class="text-gray-400 hover:text-red-500 transition-all"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="overflow-y-auto flex-1 pr-2">
+                <table class="w-full text-left text-sm whitespace-nowrap">
+                    <thead class="bg-gray-100 text-gray-700 text-xs uppercase">
+                        <tr>
+                            <th class="p-3 w-10 text-center">No</th>
+                            <th class="p-3">Tanggal / Keterangan</th>
+                            <th class="p-3 text-right">Nominal</th>
+                            <th class="p-3 text-center">Status</th>
+                            <th class="p-3 text-center">Hapus</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyRiwayatSpp" class="divide-y divide-gray-100">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-    <script src="../config.js?v=4"></script>
-    <script src="spp.js?v=4"></script>
+<script src="../config.js?v=4"></script>
+<script src="spp.js?v=4"></script>
+
 </body>
 </html>

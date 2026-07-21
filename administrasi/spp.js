@@ -91,7 +91,7 @@ function ambilMasterSantri() {
 }
 
 
-// Fungsi untuk membuat daftar kelas otomatis berurutan dari TK hingga Aliyah
+// Fungsi untuk membuat daftar kelas otomatis dan berurutan dari TK hingga Aliyah
 function buatDropdownKelasOtomatis() {
     const selectKelas = document.getElementById('filterKelasSpp');
     if (!selectKelas) return;
@@ -109,7 +109,7 @@ function buatDropdownKelasOtomatis() {
         "ALIYAH": 4
     };
 
-    // 3. Kelompokkan kelas secara otomatis berdasarkan kategori
+    // 3. Kelompokkan kelas secara otomatis berdasarkan kata kunci nama kelas
     let kelompokKelas = {};
     kelasUnik.forEach(k => {
         let kUpper = k.toUpperCase();
@@ -132,28 +132,27 @@ function buatDropdownKelasOtomatis() {
         kelompokKelas[kategori].push(k);
     });
 
-    // 4. Urutkan kategori berdasarkan bobot dari TK ke Aliyah
+    // Urutkan kategori berdasarkan bobot jenjang dari TK ke Aliyah
     let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => {
         let bobotA = bobotJenjang[a] || 99;
         let bobotB = bobotJenjang[b] || 99;
         return bobotA - bobotB;
     });
 
-    // 5. Susun elemen HTML opsi sesuai urutan (TANPA optgroup agar bersih dari garis bawaan HP)
+    // 4. Susun elemen HTML <optgroup> sesuai urutan baru
     let htmlOpsi = '<option value="" disabled selected>-- Pilih Kelas --</option>';
-    
     kategoriUrut.forEach(kategori => {
-        // Judul kategori (dibuat 'disabled' agar tidak bisa dipilih)
-        htmlOpsi += `<option value="" disabled>▪️ ${kategori}</option>`;
-        
+        htmlOpsi += `<optgroup label="${kategori}">`;
         kelompokKelas[kategori].forEach(kelas => {
-            // Daftar kelas di bawahnya diberi spasi (Em Space) agar menjorok ke dalam
-            htmlOpsi += `<option value="${kelas}">  ${kelas}</option>`;
+            htmlOpsi += `<option value="${kelas}">${kelas}</option>`;
         });
+        htmlOpsi += `</optgroup>`;
     });
 
+    // Masukkan ke dropdown filter kelas SPP
     selectKelas.innerHTML = htmlOpsi;
 
+    // Jika sebelumnya pengguna sudah memilih kelas, kembalikan pilihannya
     if (pilihanSaatIni) {
         selectKelas.value = pilihanSaatIni;
     }
@@ -616,6 +615,56 @@ document.getElementById('formPengeluaran').addEventListener('submit', function(e
     fd.append('action', 'addPengeluaran');
     fd.append('token', sessionStorage.getItem('tokenMadasa'));
     fd.append('tanggal', tanggalGabungan); // Mengirim format gabungan ke Google Apps Script
+    fd.append('keterangan', keterangan);
+    fd.append('nominal', nominalKeluar);
+    fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin');
+
+    fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
+        showLoading(false);
+        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
+        
+        if (res.status === 'success') {
+            closeModalPengeluaran();
+            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengeluaran dicatat!', showConfirmButton:false, timer:2000});
+            loadBukuKas(); 
+        } else {
+            Swal.fire('Gagal', res.message, 'error');
+        }
+    }).catch(e => {
+        showLoading(false);
+        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
+        Swal.fire('Error', 'Koneksi gagal.', 'error');
+    });
+});
+
+document.getElementById('formPengeluaran').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const nominalKeluar = getAngkaMurni(document.getElementById('out_nominal').value);
+    
+    if (nominalKeluar > SALDO_SAAT_INI) {
+        return Swal.fire({
+            icon: 'error',
+            title: 'Saldo Tidak Cukup!',
+            html: `Anda mencoba mengeluarkan <b>${formatRp(nominalKeluar)}</b>, <br>sedangkan saldo saat ini hanya <b>${formatRp(SALDO_SAAT_INI)}</b>.`
+        });
+    }
+
+    if (nominalKeluar <= 0) return Swal.fire('Perhatian', 'Nominal tidak valid', 'warning');
+
+    const btnSubmit = this.querySelector('button[type="submit"]');
+    const teksAsli = btnSubmit.innerHTML;
+    btnSubmit.disabled = true; 
+    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
+
+    const tanggal = document.getElementById('out_tanggal').value;
+    const keterangan = document.getElementById('out_keterangan').value;
+    
+    showLoading(true, "Mencatat Pengeluaran...");
+
+    const fd = new URLSearchParams();
+    fd.append('action', 'addPengeluaran');
+    fd.append('token', sessionStorage.getItem('tokenMadasa'));
+    fd.append('tanggal', tanggal);
     fd.append('keterangan', keterangan);
     fd.append('nominal', nominalKeluar);
     fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin');
