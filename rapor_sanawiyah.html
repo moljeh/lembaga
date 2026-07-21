@@ -117,23 +117,43 @@
             }
         };
 
-        // PERUBAHAN: Fungsi baru untuk membuat dropdown kelas Sanawiyah secara dinamis
+// PERUBAHAN: Fungsi otomatisasi dropdown agar mendeteksi Sanawiyah & Aliyah
         function buatOpsiKelasOtomatis() {
             const selectKelas = document.getElementById('raporKelas');
             if (!selectKelas) return;
             
-            // Filter kelas yang mengandung kata 'SANA', unik, dan urutkan
-            const kelasSanawiyahUnik = [...new Set(GLOBAL_DATA_SANTRI.map(s => s.kelas))]
-                                  .filter(kelas => kelas && kelas.toUpperCase().includes('SANA'))
+            // Filter kelas yang mengandung kata 'SANA' atau 'ALIYAH', unik, dan urutkan
+            const kelasUnik = [...new Set(GLOBAL_DATA_SANTRI.map(s => s.kelas))]
+                                  .filter(kelas => {
+                                      if (!kelas) return false;
+                                      let kUpper = kelas.toUpperCase();
+                                      return kUpper.includes('SANA') || kUpper.includes('ALIYAH') || kUpper.includes('MTS') || kUpper.includes('MA');
+                                  })
                                   .sort();
 
             // Kosongkan dan set default
-            selectKelas.innerHTML = '<option value="" disabled selected>-- Pilih Kelas Sanawiyah --</option>';
+            selectKelas.innerHTML = '<option value="" disabled selected>-- Pilih Kelas Sanawiyah / Aliyah --</option>';
 
-            // Tambahkan opsi
-            kelasSanawiyahUnik.forEach(kelas => {
-                selectKelas.innerHTML += `<option value="${kelas}">${kelas}</option>`;
+            // Kelompokkan dalam <optgroup> agar tampil rapi di dropdown
+            let kelompok = {};
+            kelasUnik.forEach(k => {
+                let kU = k.toUpperCase();
+                let grup = kU.includes('ALIYAH') || kU.includes('MA') ? 'ALIYAH' : 'SANAWIYAH';
+                if (!kelompok[grup]) kelompok[grup] = [];
+                kelompok[grup].push(k);
             });
+
+            for (let [grupNama, daftarKelas] of Object.entries(kelompok)) {
+                let optgroup = document.createElement('optgroup');
+                optgroup.label = grupNama;
+                daftarKelas.forEach(kelas => {
+                    let option = document.createElement('option');
+                    option.value = kelas;
+                    option.textContent = kelas;
+                    optgroup.appendChild(option);
+                });
+                selectKelas.appendChild(optgroup);
+            }
         }
 
         function populateSantriRapor() {

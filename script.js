@@ -143,39 +143,48 @@ function showView(viewName, pushToHistory = true) {
     const targetView = document.getElementById('view-' + viewName);
     if (targetView) targetView.classList.remove('hidden');
     
-    // Logika Muat Data sesuai Menu
-    if (viewName === 'dataSantri' || viewName === 'inputNilai' || viewName === 'pengaturan' || viewName === 'mutasi') { loadDataSantri(); }
-    if (viewName === 'ranking') { loadBintangPelajar(); }
+    // --- PERBAIKAN UTAMA: HENTIKAN LOADING BERULANG SAAT PINDAH MENU ---
+    // Logika: Hanya tarik data dari server JIKA memori tabel masih kosong (pertama kali buka web)
+    if (viewName === 'dataSantri' || viewName === 'inputNilai' || viewName === 'pengaturan' || viewName === 'mutasi') { 
+        if (GLOBAL_DATA_SANTRI.length === 0) {
+            loadDataSantri(); 
+        }
+    }
+    if (viewName === 'ranking') { 
+        loadBintangPelajar(); 
+    }
     
     // Panggil motivasi acak setiap kali pindah menu
     gantiMotivasiAcak(); 
-	
-	// --- TAMBAHKAN BARIS INI UNTUK QUOTES ATAS ---
+    
+    // --- TAMBAHKAN BARIS INI UNTUK QUOTES ATAS ---
     if (viewName === 'home') { jalankanBannerOtomatis(); }
     // ---------------------------------------------
     
     // Efek Aktif Sidebar
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
-        link.classList.remove('bg-emerald-700', 'text-white', 'font-medium'); link.classList.add('text-emerald-100', 'hover:bg-emerald-700/50');
+        link.classList.remove('bg-emerald-700', 'text-white', 'font-medium'); 
+        link.classList.add('text-emerald-100', 'hover:bg-emerald-700/50');
         if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(`'${viewName}'`)) {
-            link.classList.add('bg-emerald-700', 'text-white', 'font-medium'); link.classList.remove('text-emerald-100', 'hover:bg-emerald-700/50');
+            link.classList.add('bg-emerald-700', 'text-white', 'font-medium'); 
+            link.classList.remove('text-emerald-100', 'hover:bg-emerald-700/50');
         }
     });
-   // (Kode Anda yang sudah ada sebelumnya)
+    
     if (pushToHistory) window.history.pushState({ view: viewName }, "", "#" + viewName);
     
-// ---> TAMBAHKAN KODE INI UNTUK AUTO-CLOSE DI HP <---
+    // ---> TAMBAHKAN KODE INI UNTUK AUTO-CLOSE DI HP <---
     if (window.innerWidth < 768) {
         const sidebar = document.querySelector('aside');
         const overlay = document.getElementById('overlay-sidebar');
         if (sidebar && !sidebar.classList.contains('hidden')) {
             sidebar.classList.add('hidden');
             sidebar.classList.remove('flex', 'fixed', 'inset-y-0', 'left-0', 'w-64', 'z-[60]', 'shadow-2xl');
-            if (overlay) overlay.remove(); // Ini sudah lumayan aman
+            if (overlay) overlay.remove(); 
         }
     }
-} // <- Ini kurung penutup fungsi showView()
+}
 
 // --- PERBAIKAN LOGIKA TOMBOL BACK HP ---
 window.addEventListener('popstate', function(event) {
@@ -195,7 +204,7 @@ window.addEventListener('popstate', function(event) {
         return;
     }
 
-    // 3. TUTUP SEMUA MODAL & FORM DINAMIS
+    // 3. TUTUP SEMUA MODAL & FORM DINAMIS (TANPA RELOAD DATA)
     const modalTambah = document.getElementById('modalTambahSantri');
     const modalEdit = document.getElementById('modalEditSantri');
     const modalImport = document.getElementById('modalImportSantri');
@@ -203,11 +212,33 @@ window.addEventListener('popstate', function(event) {
     
     let isModalClosed = false;
 
-    if (modalTambah && !modalTambah.classList.contains('hidden')) { modalTambah.classList.add('hidden'); isModalClosed = true; }
-    if (modalEdit && !modalEdit.classList.contains('hidden')) { modalEdit.classList.add('hidden'); isModalClosed = true; }
-    if (modalImport && !modalImport.classList.contains('hidden')) { modalImport.classList.add('hidden'); isModalClosed = true; }
-    if (modalEditNilai && !modalEditNilai.classList.contains('hidden')) { modalEditNilai.classList.add('hidden'); isModalClosed = true; }
+    if (modalTambah && !modalTambah.classList.contains('hidden')) { 
+        modalTambah.classList.add('hidden'); 
+        const form = document.getElementById('formTambahSantri');
+        if(form) form.reset();
+        isModalClosed = true; 
+    }
+    if (modalEdit && !modalEdit.classList.contains('hidden')) { 
+        modalEdit.classList.add('hidden'); 
+        const form = document.getElementById('formEditSantri');
+        if(form) form.reset();
+        isModalClosed = true; 
+    }
+    if (modalImport && !modalImport.classList.contains('hidden')) { 
+        modalImport.classList.add('hidden'); 
+        const form = document.getElementById('formImportSantri');
+        if(form) form.reset();
+        isModalClosed = true; 
+    }
+    if (modalEditNilai && !modalEditNilai.classList.contains('hidden')) { 
+        modalEditNilai.classList.add('hidden'); 
+        const wadah = document.getElementById('wadahInputEditNilai');
+        if(wadah) wadah.innerHTML = '';
+        isModalClosed = true; 
+    }
     
+    // Jika ada modal yang berhasil ditutup, langsung BERHENTI di sini.
+    // Ini mencegah sistem memanggil showView() yang menyebabkan Loading berulang!
     if (isModalClosed) return;
 
     // 4. NAVIGASI MUNDUR KE HALAMAN UTAMA (HOME)
@@ -517,9 +548,39 @@ function openModalSantri() {
 }
 
 function closeModalSantri() { 
-    document.getElementById('modalTambahSantri').classList.add('hidden'); 
-    document.getElementById('formTambahSantri').reset(); 
-    if (window.location.hash === "#modalTambah") window.history.back(); 
+    if (window.location.hash === "#modalTambah") {
+        window.history.back(); // Biarkan popstate yang menutupnya
+    } else {
+        document.getElementById('modalTambahSantri').classList.add('hidden'); 
+        document.getElementById('formTambahSantri').reset(); 
+    }
+}
+
+function closeModalImportSantri() {
+    if (window.location.hash === "#modalImport") {
+        window.history.back(); 
+    } else {
+        document.getElementById('modalImportSantri').classList.add('hidden');
+        document.getElementById('formImportSantri').reset();
+    }
+}
+
+function closeModalEditSantri() { 
+    if (window.location.hash === "#modalEdit") {
+        window.history.back(); 
+    } else {
+        document.getElementById('modalEditSantri').classList.add('hidden'); 
+        document.getElementById('formEditSantri').reset(); 
+    }
+}
+
+function closeModalEditNilai() { 
+    if (window.location.hash === "#modalEditNilai") {
+        window.history.back(); 
+    } else {
+        document.getElementById('modalEditNilai').classList.add('hidden'); 
+        document.getElementById('wadahInputEditNilai').innerHTML = '';
+    }
 }
 
 // --- FUNGSI IMPORT SANTRI VIA CSV ---
@@ -719,50 +780,39 @@ function filterSantri() {
     } 
 }
 
-function loadDataSantri() { 
-    showLoading(true); 
+function loadDataSantri(silent = false) { 
+    if (!silent) showLoading(true); 
     const formData = new URLSearchParams(); 
     formData.append('action', 'getSantri'); 
     formData.append('token', sessionStorage.getItem('tokenMadasa'));
     
     fetch(GAS_URL, { method: 'POST', body: formData }).then(res => res.json()).then(res => { 
-        showLoading(false); 
+        if (!silent) showLoading(false); 
         if(res.status === 'success') { 
             GLOBAL_DATA_SANTRI = res.data; 
-            
-            // ---> PEMANGGILAN FUNGSI OTOMATIS <---
             buatOpsiSemuaKelasOtomatis();
-            // -------------------------------------
             
             const tbody = document.getElementById('bodyTabelSantri'); 
             if(tbody) { 
                 tbody.innerHTML = ''; 
-                
                 if(res.data.length === 0) { 
                     tbody.innerHTML = '<tr><td colspan=\"6\" class=\"p-4 sm:p-6 text-center text-gray-500\">Belum ada data santri di database.</td></tr>'; return; 
                 } 
-                
                 res.data.forEach(s => { 
                     const tr = document.createElement('tr'); 
                     tr.className = 'hover:bg-teal-50 transition-all santri-row'; tr.setAttribute('data-kelas', s.kelas); 
-// 1. Amankan data untuk ditampilkan di HTML (Mencegah XSS)
-let amanTampilNama = escapeHTML(s.nama);
-let amanTampilKelas = escapeHTML(s.kelas);
+                    let amanTampilNama = escapeHTML(s.nama);
+                    let amanTampilKelas = escapeHTML(s.kelas);
+                    let amanNama = s.nama ? s.nama.toString().replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+                    let amanAlamat = s.alamat ? s.alamat.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
+                    let amanAyah = s.ayah ? s.ayah.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
+                    let amanIbu = s.ibu ? s.ibu.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
+                    let amanTtl = s.ttl ? s.ttl.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
 
-// 2. Amankan data khusus untuk disisipkan ke dalam atribut onclick=""
-let amanNama = s.nama ? s.nama.toString().replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
-let amanAlamat = s.alamat ? s.alamat.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
-let amanAyah = s.ayah ? s.ayah.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
-let amanIbu = s.ibu ? s.ibu.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
-let amanTtl = s.ttl ? s.ttl.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
-
-// --- CEK ROLE UNTUK MENAMPILKAN TOMBOL HAPUS (HANYA ADMIN) ---
                     const roleSaatIni = sessionStorage.getItem('roleMadasa') || '';
                     const tombolHapus = (!roleSaatIni.includes('Guru')) 
-                        ? `<button onclick="hapusDataSantri('${s.nis}', '${amanNama}')" class="text-red-500 hover:bg-red-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>` 
-                        : '';
+                        ? `<button onclick="hapusDataSantri('${s.nis}', '${amanNama}')" class="text-red-500 hover:bg-red-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>` : '';
 
-                    // --- RENDER BARIS TABEL DENGAN FLEXBOX AGAR TOMBOL SEJAJAR ---
                     tr.innerHTML = `<td class="p-3 sm:p-4 text-center font-bold text-gray-500 urut-nomor"></td>
                     <td class="p-3 sm:p-4 font-medium">${escapeHTML(s.nis)}</td>
                     <td class="p-3 sm:p-4 font-bold text-gray-800 whitespace-nowrap">${amanTampilNama}</td>
@@ -774,14 +824,15 @@ let amanTtl = s.ttl ? s.ttl.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`
                             ${tombolHapus}
                         </div>
                     </td>`;
-                            
                     tbody.appendChild(tr); 
                 });
-                
                 filterSantri(); 
             } 
         } 
-    }).catch(err => { showLoading(false); Swal.fire('Error', 'Gagal menarik data dari server.', 'error'); }); 
+    }).catch(err => { 
+        if (!silent) showLoading(false); 
+        if (!silent) Swal.fire('Error', 'Gagal menarik data dari server.', 'error'); 
+    }); 
 }
 
 document.getElementById('formTambahSantri').addEventListener('submit', function(e) { 
@@ -805,8 +856,12 @@ formData.append('ttl', `${tempatTambah}, ${tglTambah}`);
     
     fetch(GAS_URL, { method: 'POST', body: formData }).then(res => res.json()).then(data => { 
         showLoading(false); btnSubmit.disabled = false; btnSubmit.innerHTML = originalText; 
-        if(data.status === 'success') { closeModalSantri(); Swal.fire('Berhasil!', data.message, 'success'); loadDataSantri(); } 
-        else { Swal.fire('Gagal', data.message, 'error'); } 
+       if(data.status === 'success') { 
+            closeModalSantri(); 
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: data.message, showConfirmButton: false, timer: 3000 });
+            loadDataSantri(true); // <--- Memanggil Update Senyap
+        } 
+        else { Swal.fire('Gagal', data.message, 'error'); }
     }).catch(err => { 
         showLoading(false); btnSubmit.disabled = false; btnSubmit.innerHTML = originalText; Swal.fire('Error', 'Gagal mengirim data.', 'error'); 
     }); 
@@ -866,14 +921,15 @@ document.getElementById('formEditSantri').addEventListener('submit', function(e)
         if(btnBatal) { btnBatal.disabled = false; btnBatal.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); }
         if(btnClose) { btnClose.disabled = false; btnClose.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); }
         
-        if(data.status === 'success') { 
+       if(data.status === 'success') { 
             closeModalEditSantri(); 
-            Swal.fire('Berhasil!', data.message, 'success'); 
-            loadDataSantri(); 
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: data.message, showConfirmButton: false, timer: 3000 });
+            loadDataSantri(true); // <--- Memanggil Update Senyap (Tanpa Loading Hijau)
         } 
         else { 
             Swal.fire('Gagal', data.message, 'error'); 
-        } 
+        }
+	   
     }).catch(err => { 
         showLoading(false); 
         
@@ -1079,21 +1135,25 @@ if (kelasPilih.includes('TK')) {
     }); 
 });
 
-function loadDataNilaiKelas() { 
+function loadDataNilaiKelas(silent = false) { 
     const kelasPilih = document.getElementById('filterKelasDataNilai').value; 
     if (!kelasPilih) { Swal.fire({ icon: 'warning', title: 'Pilih Kelas', text: 'Silakan pilih kelas terlebih dahulu.' }); return; } 
-    showLoading(true); 
+    
+    if (!silent) showLoading(true); 
     
     const formData = new URLSearchParams();
     formData.append('action', 'getDataNilai');
     formData.append('token', sessionStorage.getItem('tokenMadasa')); 
-    formData.append('kelas', kelasPilih); // PERBAIKAN: Sebelumnya tertulis 'kelas'
+    formData.append('kelas', kelasPilih); 
     
     fetch(GAS_URL, { method: 'POST', body: formData }).then(res => res.json()).then(res => { 
-        showLoading(false); 
+        if (!silent) showLoading(false); 
         if (res.status === 'success') { renderTabelDataNilai(res.headers, res.data); } 
-        else { Swal.fire('Gagal', res.message || 'Gagal memuat data nilai.', 'error'); } 
-    }).catch(err => { showLoading(false); Swal.fire('Error', 'Koneksi ke server gagal.', 'error'); }); 
+        else { if (!silent) Swal.fire('Gagal', res.message || 'Gagal memuat data nilai.', 'error'); } 
+    }).catch(err => { 
+        if (!silent) showLoading(false); 
+        if (!silent) Swal.fire('Error', 'Koneksi ke server gagal.', 'error'); 
+    }); 
 }
 
 function renderTabelDataNilai(headers, data) { 
@@ -1226,14 +1286,16 @@ document.getElementById('formEditNilai').addEventListener('submit', function(e) 
         if(btnBatal) { btnBatal.disabled = false; btnBatal.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); }
         if(btnClose) { btnClose.disabled = false; btnClose.classList.remove('opacity-50', 'cursor-not-allowed', 'pointer-events-none'); }
         
-        if(data.status === 'success') { 
+      
+	  if(data.status === 'success') { 
             closeModalEditNilai(); 
-            Swal.fire('Berhasil!', data.message, 'success'); 
-            loadDataNilaiKelas(); 
+            Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: data.message, showConfirmButton: false, timer: 3000 });
+            loadDataNilaiKelas(true); // <--- Memanggil Update Senyap
         } 
         else { 
             Swal.fire('Gagal', data.message, 'error'); 
-        } 
+        }
+	  
     }).catch(err => { 
         showLoading(false); 
         
@@ -2363,33 +2425,52 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // =========================================================
-// FUNGSI OTO-GENERATE DROPDOWN KELAS DI DASHBOARD
+// FUNGSI OTO-GENERATE DROPDOWN KELAS OTOMATIS & DINAMIS
 // =========================================================
 function buatOpsiSemuaKelasOtomatis() {
+    // 1. Ambil seluruh nama kelas unik dari data santri dan urutkan
     const kelasUnik = [...new Set(GLOBAL_DATA_SANTRI.map(s => s.kelas))].filter(Boolean).sort();
 
-    const kelasTK = kelasUnik.filter(k => k.toUpperCase().includes('TK'));
-    const kelasIBT = kelasUnik.filter(k => k.toUpperCase().includes('IBT'));
-    const kelasSANA = kelasUnik.filter(k => k.toUpperCase().includes('SANA'));
+    // 2. Kelompokkan secara otomatis berdasarkan kata kunci yang ada di nama kelas
+    let kelompokKelas = {};
+    
+    kelasUnik.forEach(k => {
+        let kUpper = k.toUpperCase();
+        let kategori = "LAINNYA"; // Kategori default jika tidak ada kata kunci khusus
 
+        if (kUpper.includes('TK') || kUpper.includes('RA')) {
+            kategori = "TK / RA";
+        } else if (kUpper.includes('IBT') || kUpper.includes('IBTIDAIYAH')) {
+            kategori = "IBTIDAIYAH";
+        } else if (kUpper.includes('SANA') || kUpper.includes('SANAWIYAH') || kUpper.includes('MTS')) {
+            kategori = "SANAWIYAH";
+        } else if (kUpper.includes('ALIYAH') || kUpper.includes('MA')) {
+            kategori = "ALIYAH";
+        } else {
+            // Jika ada tingkat baru (misal: "DINIYAH", "WUSTHA", dll), buat grupnya secara otomatis!
+            // Mengambil kata pertama dari nama kelas sebagai nama grup
+            let kataPertama = k.split(/[\s-]+/)[0].toUpperCase();
+            kategori = kataPertama;
+        }
+
+        if (!kelompokKelas[kategori]) {
+            kelompokKelas[kategori] = [];
+        }
+        kelompokKelas[kategori].push(k);
+    });
+
+    // 3. Susun elemen HTML <optgroup> secara dinamis
     let htmlOpsi = '';
-    if(kelasTK.length > 0) {
-        htmlOpsi += `<optgroup label="TK">`;
-        kelasTK.forEach(k => htmlOpsi += `<option value="${k}">${k}</option>`);
-        htmlOpsi += `</optgroup>`;
-    }
-    if(kelasIBT.length > 0) {
-        htmlOpsi += `<optgroup label="IBTIDAIYAH">`;
-        kelasIBT.forEach(k => htmlOpsi += `<option value="${k}">${k}</option>`);
-        htmlOpsi += `</optgroup>`;
-    }
-    if(kelasSANA.length > 0) {
-        htmlOpsi += `<optgroup label="SANAWIYAH">`;
-        kelasSANA.forEach(k => htmlOpsi += `<option value="${k}">${k}</option>`);
+    for (const [kategori, daftarKelas] of Object.entries(kelompokKelas)) {
+        htmlOpsi += `<optgroup label="${kategori}">`;
+        daftarKelas.forEach(k => {
+            htmlOpsi += `<option value="${k}">${k}</option>`;
+        });
         htmlOpsi += `</optgroup>`;
     }
 
-const listDropdown = [
+    // 4. Masukkan ke semua elemen dropdown yang ada di aplikasi
+    const listDropdown = [
         { id: 'filterKelasSantri', defaultOpt: '<option value="Semua">Semua Kelas</option>' },
         { id: 'pilihKelasNilai', defaultOpt: '<option value="" disabled selected>-- Silakan Pilih Kelas Dulu --</option>' },
         { id: 'filterKelasDataNilai', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Terlebih Dahulu --</option>' },
@@ -2397,8 +2478,6 @@ const listDropdown = [
         { id: 'settingKelas', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas --</option>' },
         { id: 'mutasiKelasAsal', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Asal --</option>' },
         { id: 'mutasiKelasTujuan', defaultOpt: '<option value="" disabled selected>-- Pilih Tujuan --</option><option value="Lulus / Alumni" class="text-green-600 font-bold">🎓 LULUS / ALUMNI</option><option value="Diberhentikan" class="text-red-600 font-bold">🚫 DIBERHENTIKAN (DO)</option><option disabled>───────────────</option>' },
-        
-        // Tambahan untuk Modal
         { id: 'add_kelas', defaultOpt: '<option value="" disabled selected>Pilih...</option>' },
         { id: 'edit_kelas', defaultOpt: '<option value="" disabled selected>Pilih...</option>' }
     ];
@@ -2409,6 +2488,24 @@ const listDropdown = [
             elemen.innerHTML = dropdown.defaultOpt + htmlOpsi;
         }
     });
+
+    // --- RESET TAMPILAN FORM & TABEL SAAT REFRESH ---
+    const wadahFilterKedua = document.getElementById('wadahFilterKedua');
+    const formInputNilaiBulk = document.getElementById('formInputNilaiBulk');
+    if (wadahFilterKedua) wadahFilterKedua.classList.add('hidden');
+    if (formInputNilaiBulk) formInputNilaiBulk.classList.add('hidden');
+
+    const formSettingRapor = document.getElementById('formSettingRapor');
+    if (formSettingRapor) formSettingRapor.classList.add('hidden');
+
+    const bodyDataNilai = document.getElementById('bodyDataNilai');
+    if (bodyDataNilai) bodyDataNilai.innerHTML = '<tr><td colspan="15" class="p-10 text-center text-gray-500"><i class="fas fa-table text-4xl mb-3 text-gray-300 block"></i> Silakan pilih kelas dan klik tombol cari.</td></tr>';
+
+    const bodyTabelRanking = document.getElementById('bodyTabelRanking');
+    if (bodyTabelRanking) bodyTabelRanking.innerHTML = '<tr><td colspan="5" class="p-8 text-left sm:text-center border-none"><div class="sticky left-6 inline-block text-center text-gray-400"><i class="fas fa-list-ol text-4xl mb-2 text-gray-200 block"></i>Silakan pilih kelas.</div></td></tr>';
+
+    const bodyTabelMutasi = document.getElementById('bodyTabelMutasi');
+    if (bodyTabelMutasi) bodyTabelMutasi.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400"><i class="fas fa-users text-4xl mb-2 text-gray-200 block"></i>Silakan pilih Kelas Asal terlebih dahulu.</td></tr>';
 }
 
 // =========================================================
