@@ -73,7 +73,7 @@ if (action === 'simpanAbsenBarcode') return simpanAbsenBarcode(e);
     // ==========================================
     
     // (Opsional) Keamanan Ekstra: Kunci fitur khusus hanya untuk Admin
-    var adminOnly = ['mutasiSantri', 'importSantriBulk', 'deleteSppData', 'updateDataNilai'];
+    var adminOnly = ['mutasiSantri', 'importSantriBulk', 'deleteSppData', 'updateDataNilai', 'deleteSantri'];
     var roleBersih = userRole.toString().trim(); // Bersihkan spasi gaib jika ada
     
     // Tambahkan 'Administrator' ke dalam daftar putih (whitelist)
@@ -85,6 +85,7 @@ if (action === 'simpanAbsenBarcode') return simpanAbsenBarcode(e);
       case 'getSantri': return ambilDataSantri();
       case 'addSantri': return tambahDataSantri(e);
       case 'updateSantri': return updateDataSantri(e);
+      case 'deleteSantri': return hapusDataSantriServer(e);
       case 'simpanNilai': return simpanDataNilai(e);
       case 'getDataNilai': return getDataNilai(e); 
       case 'updateDataNilai': return updateDataNilai(e);
@@ -1694,4 +1695,28 @@ function getLaporanKas(e) {
   result.reverse();
 
   return responSukses({ data: result, masuk: totMasuk, keluar: totKeluar });
+}
+
+// =================================================================
+// FUNGSI MENGHAPUS DATA SANTRI DARI DATABASE
+// =================================================================
+function hapusDataSantriServer(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('SANTRI');
+  
+  if (!sheet) return responError('Database Santri tidak ditemukan.');
+  
+  var nisTarget = e.parameter.nis;
+  var data = sheet.getDataRange().getValues();
+  
+  // Looping dari bawah agar indeks baris akurat saat dihapus
+  for (var i = data.length - 1; i > 0; i--) {
+    var nisData = data[i][0].toString().replace(/'/g, "").trim();
+    if (nisData === nisTarget.toString().trim()) {
+      sheet.deleteRow(i + 1); // +1 karena array dimulai dari 0
+      return responSukses({ message: 'Data santri berhasil dihapus dari sistem.' });
+    }
+  }
+  
+  return responError('Data santri tidak ditemukan atau sudah terhapus sebelumnya.');
 }

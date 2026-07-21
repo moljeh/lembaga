@@ -21,6 +21,18 @@ let GLOBAL_HEADERS_NILAI = [];
 let GLOBAL_DATA_NILAI = [];
 let JADWAL_MAPEL = {}; 
 
+
+// ✨ FUNGSI BANTUAN KEAMANAN (ANTI-XSS)
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const sudahOnboarding = localStorage.getItem('madasaOnboardingDone');
     const tokenTersimpan = sessionStorage.getItem('tokenMadasa');
@@ -153,14 +165,14 @@ function showView(viewName, pushToHistory = true) {
    // (Kode Anda yang sudah ada sebelumnya)
     if (pushToHistory) window.history.pushState({ view: viewName }, "", "#" + viewName);
     
-    // ---> TAMBAHKAN KODE INI UNTUK AUTO-CLOSE DI HP <---
+// ---> TAMBAHKAN KODE INI UNTUK AUTO-CLOSE DI HP <---
     if (window.innerWidth < 768) {
         const sidebar = document.querySelector('aside');
         const overlay = document.getElementById('overlay-sidebar');
         if (sidebar && !sidebar.classList.contains('hidden')) {
             sidebar.classList.add('hidden');
             sidebar.classList.remove('flex', 'fixed', 'inset-y-0', 'left-0', 'w-64', 'z-[60]', 'shadow-2xl');
-            if (overlay) overlay.remove();
+            if (overlay) overlay.remove(); // Ini sudah lumayan aman
         }
     }
 } // <- Ini kurung penutup fungsi showView()
@@ -527,54 +539,77 @@ const formImport = document.getElementById('formImportSantri');
 if (formImport) {
     formImport.addEventListener('submit', function(e) {
         e.preventDefault();
-const fileInput = document.getElementById('fileImportCSV');
-if (!fileInput.files.length) return Swal.fire('Perhatian', 'Pilih file CSV terlebih dahulu!', 'warning');
+        const fileInput = document.getElementById('fileImportCSV');
+        if (!fileInput.files.length) return Swal.fire('Perhatian', 'Pilih file Excel (.xlsx) terlebih dahulu!', 'warning');
 
-const btnSubmit = this.querySelector('button[type="submit"]');
-const originalText = btnSubmit.innerHTML;
-btnSubmit.disabled = true;
-btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Membaca File...';
+        const btnSubmit = this.querySelector('button[type="submit"]');
+        const originalText = btnSubmit.innerHTML;
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Membaca Excel...';
 
-// Parse CSV menggunakan library PapaParse
-Papa.parse(fileInput.files[0], {
-header: false, 
-skipEmptyLines: true,
-complete: function(results) {
-    if(results.errors.length) {
-        btnSubmit.disabled = false; btnSubmit.innerHTML = originalText;
-        return Swal.fire('Error CSV', 'Format file CSV rusak.', 'error');
-    }
+        const file = fileInput.files[0];
+        const reader = new FileReader();
 
-    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim Data...';
-    showLoading(true);
+        reader.onload = function(e) {
+            try {
+                // 1. Baca file Excel menggunakan SheetJS
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // 2. Ambil sheet pertama
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                // 3. Ubah data sheet menjadi array 2 dimensi
+                let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+                
+                // Hapus baris pertama (Header)
+                jsonData.shift(); 
+                
+                // Hapus baris kosong
+                jsonData = jsonData.filter(row => row.length > 0);
 
-    const formData = new URLSearchParams();
-    formData.append('action', 'importSantriBulk');
-    formData.append('data_import', JSON.stringify(results.data));
-	formData.append('token', sessionStorage.getItem('tokenMadasa'));
+                if(jsonData.length === 0) {
+                    btnSubmit.disabled = false; btnSubmit.innerHTML = originalText;
+                    return Swal.fire('Error Excel', 'File Excel kosong atau format tidak sesuai.', 'error');
+                }
 
-    fetch(GAS_URL, { method: 'POST', body: formData })
-    .then(res => res.json())
-    .then(data => {
-        showLoading(false);
-        btnSubmit.disabled = false; btnSubmit.innerHTML = originalText;
-        if(data.status === 'success') {
-            closeModalImportSantri();
-            Swal.fire('Berhasil!', data.message, 'success');
-            loadDataSantri(); // Refresh tabel setelah sukses
-        } else {
-            Swal.fire('Gagal', data.message, 'error');
-        }
-		
-}).catch(err => {
-        showLoading(false);
-        btnSubmit.disabled = false; btnSubmit.innerHTML = originalText;
-        Swal.fire('Error', 'Gagal terhubung ke database.', 'error');
+                btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mengirim Data...';
+                showLoading(true);
+
+                // 4. Kirim ke Google Apps Script
+                const formData = new URLSearchParams();
+                formData.append('action', 'importSantriBulk');
+                formData.append('data_import', JSON.stringify(jsonData));
+                formData.append('token', sessionStorage.getItem('tokenMadasa'));
+
+                fetch(GAS_URL, { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    showLoading(false);
+                    btnSubmit.disabled = false; btnSubmit.innerHTML = originalText;
+                    if(data.status === 'success') {
+                        closeModalImportSantri();
+                        Swal.fire('Berhasil!', data.message, 'success');
+                        loadDataSantri(); // Refresh tabel setelah sukses
+                    } else {
+                        Swal.fire('Gagal', data.message, 'error');
+                    }
+                }).catch(err => {
+                    showLoading(false);
+                    btnSubmit.disabled = false; btnSubmit.innerHTML = originalText;
+                    Swal.fire('Error', 'Gagal terhubung ke database.', 'error');
+                });
+
+            } catch (error) {
+                btnSubmit.disabled = false; btnSubmit.innerHTML = originalText;
+                Swal.fire('Error', 'Gagal membaca file. Pastikan formatnya .xlsx', 'error');
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
     });
 }
-});
-    }); // <--- TAMBAHKAN BARIS INI
-} // <--- TAMBAHKAN BARIS INI
 
 // Fungsi Bantuan: Mengubah teks "Bangkalan, 5 April 2026" menjadi "2026-04-05"
 function reverseTanggalIndo(teksTanggal) {
@@ -688,39 +723,61 @@ function loadDataSantri() {
     showLoading(true); 
     const formData = new URLSearchParams(); 
     formData.append('action', 'getSantri'); 
-    // --- KODE KEAMANAN 3: LAMPIRKAN TOKEN ---
     formData.append('token', sessionStorage.getItem('tokenMadasa'));
     
     fetch(GAS_URL, { method: 'POST', body: formData }).then(res => res.json()).then(res => { 
         showLoading(false); 
         if(res.status === 'success') { 
             GLOBAL_DATA_SANTRI = res.data; 
+            
+            // ---> PEMANGGILAN FUNGSI OTOMATIS <---
+            buatOpsiSemuaKelasOtomatis();
+            // -------------------------------------
+            
             const tbody = document.getElementById('bodyTabelSantri'); 
             if(tbody) { 
                 tbody.innerHTML = ''; 
-				
-if(res.data.length === 0) { 
-    // Ubah colspan="5" menjadi colspan="6"
-    tbody.innerHTML = '<tr><td colspan=\"6\" class=\"p-4 sm:p-6 text-center text-gray-500\">Belum ada data santri di database.</td></tr>'; return; 
-} 
                 
-res.data.forEach(s => { 
-    const tr = document.createElement('tr'); 
-    tr.className = 'hover:bg-teal-50 transition-all santri-row'; tr.setAttribute('data-kelas', s.kelas); 
+                if(res.data.length === 0) { 
+                    tbody.innerHTML = '<tr><td colspan=\"6\" class=\"p-4 sm:p-6 text-center text-gray-500\">Belum ada data santri di database.</td></tr>'; return; 
+                } 
+                
+                res.data.forEach(s => { 
+                    const tr = document.createElement('tr'); 
+                    tr.className = 'hover:bg-teal-50 transition-all santri-row'; tr.setAttribute('data-kelas', s.kelas); 
+// 1. Amankan data untuk ditampilkan di HTML (Mencegah XSS)
+let amanTampilNama = escapeHTML(s.nama);
+let amanTampilKelas = escapeHTML(s.kelas);
 
-    // Mengamankan tanda petik agar tidak merusak tombol
-    let amanNama = s.nama ? s.nama.toString().replace(/'/g, "\\'") : '';
-    let amanAlamat = s.alamat ? s.alamat.toString().replace(/`/g, "\\`") : '';
-    let amanAyah = s.ayah ? s.ayah.toString().replace(/`/g, "\\`") : '';
-    let amanIbu = s.ibu ? s.ibu.toString().replace(/`/g, "\\`") : '';
-    let amanTtl = s.ttl ? s.ttl.toString().replace(/`/g, "\\`") : '';
+// 2. Amankan data khusus untuk disisipkan ke dalam atribut onclick=""
+let amanNama = s.nama ? s.nama.toString().replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
+let amanAlamat = s.alamat ? s.alamat.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
+let amanAyah = s.ayah ? s.ayah.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
+let amanIbu = s.ibu ? s.ibu.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
+let amanTtl = s.ttl ? s.ttl.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
 
-    // TAMBAHKAN KOLOM NOMOR DI AWAL: <td class="p-3 sm:p-4 text-center font-bold text-gray-500 urut-nomor"></td>
-    tr.innerHTML = `<td class="p-3 sm:p-4 text-center font-bold text-gray-500 urut-nomor"></td><td class="p-3 sm:p-4 font-medium">${s.nis}</td><td class="p-3 sm:p-4 font-bold text-gray-800 whitespace-nowrap">${s.nama}</td><td class="p-3 sm:p-4 text-center whitespace-nowrap">${s.jk}</td><td class="p-3 sm:p-4 whitespace-nowrap"><span class="bg-teal-100 text-teal-700 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap">${s.kelas}</span></td><td class="p-3 sm:p-4 text-center"><button onclick="openModalEditSantri('${s.nis}', '${amanNama}', '${s.jk}', '${s.kelas}', \`${amanAlamat}\`, \`${amanAyah}\`, \`${amanIbu}\`, '${s.hp}', \`${amanTtl}\`)" class="text-blue-500 hover:bg-blue-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Edit"><i class="fas fa-edit"></i></button></td>`;
-            
-    tbody.appendChild(tr); 
-});
-				
+// --- CEK ROLE UNTUK MENAMPILKAN TOMBOL HAPUS (HANYA ADMIN) ---
+                    const roleSaatIni = sessionStorage.getItem('roleMadasa') || '';
+                    const tombolHapus = (!roleSaatIni.includes('Guru')) 
+                        ? `<button onclick="hapusDataSantri('${s.nis}', '${amanNama}')" class="text-red-500 hover:bg-red-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>` 
+                        : '';
+
+                    // --- RENDER BARIS TABEL DENGAN FLEXBOX AGAR TOMBOL SEJAJAR ---
+                    tr.innerHTML = `<td class="p-3 sm:p-4 text-center font-bold text-gray-500 urut-nomor"></td>
+                    <td class="p-3 sm:p-4 font-medium">${escapeHTML(s.nis)}</td>
+                    <td class="p-3 sm:p-4 font-bold text-gray-800 whitespace-nowrap">${amanTampilNama}</td>
+                    <td class="p-3 sm:p-4 text-center whitespace-nowrap">${escapeHTML(s.jk)}</td>
+                    <td class="p-3 sm:p-4 whitespace-nowrap"><span class="bg-teal-100 text-teal-700 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap">${amanTampilKelas}</span></td>
+                    <td class="p-3 sm:p-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            <button onclick="openModalEditSantri('${s.nis}', '${amanNama}', '${s.jk}', '${s.kelas}', \`${amanAlamat}\`, \`${amanAyah}\`, \`${amanIbu}\`, '${s.hp}', \`${amanTtl}\`)" class="text-blue-500 hover:bg-blue-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Edit Data"><i class="fas fa-edit"></i></button>
+                            ${tombolHapus}
+                        </div>
+                    </td>`;
+                            
+                    tbody.appendChild(tr); 
+                });
+                
                 filterSantri(); 
             } 
         } 
@@ -895,9 +952,10 @@ if (kelas.includes('TK')) {
                 html += `<td class="p-3 text-sm border-r border-gray-200 text-gray-500 whitespace-nowrap">${s.nis}</td> <td class="p-3 border-r border-gray-200 md:sticky md:left-0 bg-white z-10 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px] max-w-[200px]"> <p class="font-bold text-gray-800 whitespace-normal text-xs sm:text-sm leading-snug">${s.nama}</p> </td> <td class="p-2 border-r border-gray-200 bg-gray-50"><input type="number" class="input-tk-n1 w-16 sm:w-20 mx-auto block p-2 border border-gray-300 rounded-lg font-bold text-center outline-none focus:ring-2 focus:ring-emerald-500" data-nis="${s.nis}" placeholder="N1" oninput="validasiInputNilai(this)"></td> <td class="p-2 bg-gray-50"><input type="number" class="input-tk-n2 w-16 sm:w-20 mx-auto block p-2 border border-gray-300 rounded-lg font-bold text-center outline-none focus:ring-2 focus:ring-emerald-500" placeholder="N2" oninput="validasiInputNilai(this)"></td>`; 
             } else { 
                 document.getElementById('judulKolomNilai').innerText = `NILAI ${subFilterValue}`;
-                html += `<td class="p-3 text-sm border-r border-gray-200 text-gray-500 whitespace-nowrap">${s.nis}</td> <td class="p-3 border-r border-gray-200 md:sticky md:left-0 bg-white z-10 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px] max-w-[200px]"> <p class="font-bold text-gray-800 whitespace-normal text-xs sm:text-sm leading-snug">${s.nama}</p> </td> <td class="p-3 text-center bg-gray-50"><input type="number" class="input-ibt w-full min-w-[90px] max-w-[120px] mx-auto block p-2 border-2 border-gray-300 rounded-lg font-bold text-center text-emerald-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 shadow-inner outline-none" data-nis="${s.nis}" data-nama="${s.nama}" placeholder="0-100" oninput="validasiInputNilai(this)"></td>`;
+                html += `<td class="p-3 text-sm border-r border-gray-200 text-gray-500 whitespace-nowrap">${s.nis}</td> <td class="p-3 border-r border-gray-200 md:sticky md:left-0 bg-white z-10 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px] max-w-[200px]"> 
+				<p class="font-bold text-gray-800 whitespace-normal text-xs sm:text-sm leading-snug">${escapeHTML(s.nama)}</p> </td> <td class="p-3 text-center bg-gray-50"><input type="number" class="input-ibt w-full min-w-[90px] max-w-[120px] mx-auto block p-2 border-2 border-gray-300 rounded-lg font-bold text-center text-emerald-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 shadow-inner outline-none" data-nis="${escapeHTML(s.nis)}" data-nama="${escapeHTML(s.nama)}" placeholder="0-100" oninput="validasiInputNilai(this)"></td>`; // <-- INI YANG DITAMBAHKAN
             } 
-            html += `</tr>`; tbody.innerHTML += html; 
+            html += `</tr>`; tbody.innerHTML += html;
         }); 
     } 
     
@@ -1073,12 +1131,12 @@ function renderTabelDataNilai(headers, data) {
 
         row.forEach((cell, cellIndex) => { 
             const headerName = headers[cellIndex].toLowerCase(); 
-            if (headerName.includes('nama')) { 
-                trBody += `<td class="p-3 border-r border-gray-200 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold text-gray-800 whitespace-nowrap">${cell}</td>`; 
-            } 
-            else if (headerName.includes('nis')) { 
-                let textNIS = cell.toString().replace("'", ""); trBody += `<td class="p-3 border-r border-gray-200 text-gray-600 whitespace-nowrap">${textNIS}</td>`; 
-            } 
+if (headerName.includes('nama')) { 
+    trBody += `<td class="p-3 border-r border-gray-200 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold text-gray-800 whitespace-nowrap">${escapeHTML(cell)}</td>`; 
+} 
+else if (headerName.includes('nis')) { 
+    let textNIS = cell.toString().replace("'", ""); trBody += `<td class="p-3 border-r border-gray-200 text-gray-600 whitespace-nowrap">${escapeHTML(textNIS)}</td>`; 
+} 
             else if (headerName.includes('rata')) {
                 // Terapkan rata-rata hasil hitung ulang agar tidak muncul Teks Tanggal
                 let finalRata = kls.includes('TK') ? (!isNaN(parseFloat(cell)) ? parseFloat(cell).toFixed(1) : "0.0") : rataBenar;
@@ -1262,15 +1320,37 @@ function loadBintangPelajar() {
                     let colorAvatar = isTop1 ? 'bg-amber-100 text-amber-500' : 'bg-gray-100 text-gray-400';
                     let colorNumber = isTop1 ? warnaBadge.split(' ')[0] : 'bg-gray-500'; 
 
-                    let html = ` <div class="bg-white rounded-xl p-5 shadow-lg transform transition hover:-translate-y-1 relative overflow-hidden group"> ${badgeJuara} <div class="flex items-center gap-4 mb-3"> <div class="w-14 h-14 rounded-full ${colorAvatar} flex items-center justify-center text-2xl font-bold shadow-inner shrink-0 relative"> <i class="fas fa-user-graduate"></i> <div class="absolute -bottom-1 -right-1 w-6 h-6 ${colorNumber} text-white text-xs flex items-center justify-center rounded-full border-2 border-white font-bold">${idx + 1}</div> </div> <div class="flex-1 min-w-0"> <p class="text-[10px] font-bold text-amber-600 tracking-wider uppercase mb-0.5">${santri.kelas}</p> <h4 class="font-bold text-gray-800 text-sm sm:text-base truncate leading-tight">${santri.nama}</h4> 
+                    let html = ` <div class="bg-white rounded-xl p-5 shadow-lg transform transition hover:-translate-y-1 relative overflow-hidden group"> ${badgeJuara} <div class="flex items-center gap-4 mb-3"> <div class="w-14 h-14 rounded-full ${colorAvatar} flex items-center justify-center text-2xl font-bold shadow-inner shrink-0 relative"> <i class="fas fa-user-graduate"></i> <div class="absolute -bottom-1 -right-1 w-6 h-6 ${colorNumber} text-white text-xs flex items-center justify-center rounded-full border-2 border-white font-bold">${idx + 1}</div> </div> <div class="flex-1 min-w-0"> <p class="text-[10px] font-bold text-amber-600 tracking-wider uppercase mb-0.5">${santri.kelas}</p> 
 					
-					<p class="text-xs text-gray-500 mt-1">Total: <span class="font-bold text-gray-800">${santri.total}</span> | Rata-rata: <span class="font-bold text-gray-800">${rataBenar}</span></p>
-					
-					</div> </div> <div class="border-t border-gray-100 pt-3 text-xs text-gray-500 space-y-1"> <p class="truncate" title="${santri.jk}"><i class="fas fa-venus-mars w-4 text-purple-500 text-center"></i> Jns Kelamin: <b>${santri.jk}</b></p> <p class="truncate" title="${santri.ttl}"><i class="fas fa-map-marker-alt w-4 text-emerald-500 text-center"></i> ${santri.ttl}</p> <p class="truncate" title="${santri.ayah} & ${santri.ibu}"><i class="fas fa-user-friends w-4 text-blue-500 text-center"></i> ${santri.ayah} & ${santri.ibu}</p> <p class="truncate" title="${santri.alamat}"><i class="fas fa-home w-4 text-orange-500 text-center"></i> ${santri.alamat}</p> <p class="truncate mt-1 pt-1" title="Wali Kelas"><i class="fas fa-user-tie w-4 text-gray-400 text-center"></i> Wali Kelas: <b class="text-gray-700">${namaWali}</b></p> </div> </div>`; 
-                    
-                    wadah.innerHTML += html; 
-                });
-            };
+					<h4 class="font-bold text-gray-800 text-sm sm:text-base truncate leading-tight">${escapeHTML(santri.nama)}</h4>
+                        
+                        <p class="text-xs text-gray-500 mt-1">Total: <span class="font-bold text-gray-800">${santri.total}</span> | Rata-rata: <span class="font-bold text-gray-800">${rataBenar}</span></p>
+                        
+                    </div> 
+                </div> 
+                
+                <div class="border-t border-gray-100 pt-3 text-xs text-gray-500 space-y-1"> 
+                    <p class="truncate" title="${escapeHTML(santri.jk)}">
+                        <i class="fas fa-venus-mars w-4 text-purple-500 text-center"></i> Jns Kelamin: <b>${escapeHTML(santri.jk)}</b>
+                    </p>
+                    <p class="truncate" title="${escapeHTML(santri.ttl)}">
+                        <i class="fas fa-map-marker-alt w-4 text-emerald-500 text-center"></i> ${escapeHTML(santri.ttl)}
+                    </p> 
+                    <p class="truncate" title="${escapeHTML(santri.ayah)} & ${escapeHTML(santri.ibu)}">
+                        <i class="fas fa-user-friends w-4 text-blue-500 text-center"></i> ${escapeHTML(santri.ayah)} & ${escapeHTML(santri.ibu)}
+                    </p> 
+                    <p class="truncate" title="${escapeHTML(santri.alamat)}">
+                        <i class="fas fa-home w-4 text-orange-500 text-center"></i> ${escapeHTML(santri.alamat)}
+                    </p> 
+                    <p class="truncate mt-1 pt-1" title="Wali Kelas">
+                        <i class="fas fa-user-tie w-4 text-gray-400 text-center"></i> Wali Kelas: <b class="text-gray-700">${escapeHTML(namaWali)}</b>
+                    </p> 
+                </div> 
+            </div>`; 
+                        
+            wadah.innerHTML += html; 
+        });
+    };
 
 // Panggil fungsi render untuk masing-masing tingkatan
 renderKategori('Tingkat TK / RA', 'fas fa-star text-amber-400', dataTK, 'bg-emerald-600');
@@ -1347,12 +1427,12 @@ function loadRankingKelas() {
                     <td class="p-3 text-center border-r border-gray-100 ${rankStyle} whitespace-nowrap">${icon}</td> 
                     <td class="p-3 text-gray-500 border-r border-gray-100 text-xs whitespace-nowrap">${s.nis}</td> 
                     <td class="p-3 border-r border-gray-100 min-w-[280px]"> 
-                        <p class="font-bold text-gray-800 ${rankNomor <= 3 ? 'text-base' : 'text-sm'} whitespace-nowrap">${s.nama}</p> 
-                        <div class="text-[11px] text-gray-500 mt-1.5 space-y-0.5 whitespace-nowrap"> 
-                            <p><span class="font-semibold text-gray-600">L/P:</span> ${s.jk}</p> 
-                            <p><span class="font-semibold text-gray-600">TTL:</span> ${s.ttl}</p> 
-                            <p><span class="font-semibold text-gray-600">Ortu:</span> ${s.ayah} & ${s.ibu}</p> 
-                            <p><span class="font-semibold text-gray-600">Alamat:</span> ${s.alamat}</p> 
+                       <p class="font-bold text-gray-800 ${rankNomor <= 3 ? 'text-base' : 'text-sm'} whitespace-nowrap">${escapeHTML(s.nama)}</p> 
+<div class="text-[11px] text-gray-500 mt-1.5 space-y-0.5 whitespace-nowrap"> 
+    <p><span class="font-semibold text-gray-600">L/P:</span> ${escapeHTML(s.jk)}</p> 
+    <p><span class="font-semibold text-gray-600">TTL:</span> ${escapeHTML(s.ttl)}</p> 
+    <p><span class="font-semibold text-gray-600">Ortu:</span> ${escapeHTML(s.ayah)} & ${escapeHTML(s.ibu)}</p> 
+    <p><span class="font-semibold text-gray-600">Alamat:</span> ${escapeHTML(s.alamat)}</p>
                             <p class="mt-1 pt-1 border-t border-gray-200/60"><span class="font-semibold text-gray-600">Wali Kelas:</span> <span class="font-bold text-gray-800">${namaWali}</span></p> 
                         </div> 
                     </td> 
@@ -1439,8 +1519,13 @@ function loadSettingRapor() {
         <td class="p-1 border-r bg-orange-50/30"><input type="number" class="inp-izin w-10 sm:w-12 mx-auto block text-center border-2 border-orange-200 rounded p-1 font-bold text-orange-700 outline-none focus:border-orange-500" value="${d.izin}"></td> 
         <td class="p-1 border-r bg-orange-50/30"><input type="number" class="inp-alpa w-10 sm:w-12 mx-auto block text-center border-2 border-orange-200 rounded p-1 font-bold text-orange-700 outline-none focus:border-orange-500" value="${d.alpa}"></td> 
         
-        <td class="p-1 border-r bg-emerald-50/30"><input type="text" class="inp-keputusan w-48 border-2 border-emerald-200 rounded p-1.5 text-xs font-semibold text-emerald-800 outline-none focus:border-emerald-500" value="${d.keputusan}" placeholder="Naik Ke Kelas..."></td> 
-        <td class="p-1 bg-purple-50/30"><input type="text" class="inp-catatan w-72 border-2 border-purple-200 rounded p-1.5 text-xs font-medium text-purple-800 outline-none focus:border-purple-500" value="${d.catatan}" placeholder="Catatan Guru..."></td> 
+<td class="p-3 border-r font-bold sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] text-gray-800 min-w-[130px] max-w-[150px] md:max-w-none md:min-w-[250px] whitespace-normal leading-snug">${escapeHTML(s.nama)}</td>
+
+<!-- Terapkan ke semua input value seperti akhlaq, sakit, dll -->
+<td class="p-1 border-r bg-emerald-50/30"><input type="text" class="inp-keputusan w-48 border-2 border-emerald-200 rounded p-1.5 text-xs font-semibold text-emerald-800 outline-none focus:border-emerald-500" value="${escapeHTML(d.keputusan)}" placeholder="Naik Ke Kelas..."></td>
+
+
+<td class="p-1 bg-purple-50/30"><input type="text" class="inp-catatan w-72 border-2 border-purple-200 rounded p-1.5 text-xs font-medium text-purple-800 outline-none focus:border-purple-500" value="${escapeHTML(d.catatan)}" placeholder="Catatan Guru..."></td>
     </tr>`; 
 });
         }
@@ -2031,9 +2116,9 @@ function loadTabelMutasi() {
                 <td class="p-3 text-center border-r border-gray-100" onclick="event.stopPropagation()">
                     <input type="checkbox" class="cek-mutasi w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer" value="${s.nis}">
                 </td>
-                <td class="p-3 text-gray-600 font-medium border-r border-gray-100">${s.nis}</td>
-                <td class="p-3 font-bold text-gray-800 border-r border-gray-100">${s.nama}</td>
-                <td class="p-3 text-center"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold">${s.kelas}</span></td>
+               <td class="p-3 text-gray-600 font-medium border-r border-gray-100">${escapeHTML(s.nis)}</td>
+<td class="p-3 font-bold text-gray-800 border-r border-gray-100">${escapeHTML(s.nama)}</td>
+<td class="p-3 text-center"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold">${escapeHTML(s.kelas)}</span></td>
             </tr>
         `;
     });
@@ -2275,3 +2360,180 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(tampilkanPromptPWA, 1500);
     }
 });
+
+
+// =========================================================
+// FUNGSI OTO-GENERATE DROPDOWN KELAS DI DASHBOARD
+// =========================================================
+function buatOpsiSemuaKelasOtomatis() {
+    const kelasUnik = [...new Set(GLOBAL_DATA_SANTRI.map(s => s.kelas))].filter(Boolean).sort();
+
+    const kelasTK = kelasUnik.filter(k => k.toUpperCase().includes('TK'));
+    const kelasIBT = kelasUnik.filter(k => k.toUpperCase().includes('IBT'));
+    const kelasSANA = kelasUnik.filter(k => k.toUpperCase().includes('SANA'));
+
+    let htmlOpsi = '';
+    if(kelasTK.length > 0) {
+        htmlOpsi += `<optgroup label="TK">`;
+        kelasTK.forEach(k => htmlOpsi += `<option value="${k}">${k}</option>`);
+        htmlOpsi += `</optgroup>`;
+    }
+    if(kelasIBT.length > 0) {
+        htmlOpsi += `<optgroup label="IBTIDAIYAH">`;
+        kelasIBT.forEach(k => htmlOpsi += `<option value="${k}">${k}</option>`);
+        htmlOpsi += `</optgroup>`;
+    }
+    if(kelasSANA.length > 0) {
+        htmlOpsi += `<optgroup label="SANAWIYAH">`;
+        kelasSANA.forEach(k => htmlOpsi += `<option value="${k}">${k}</option>`);
+        htmlOpsi += `</optgroup>`;
+    }
+
+const listDropdown = [
+        { id: 'filterKelasSantri', defaultOpt: '<option value="Semua">Semua Kelas</option>' },
+        { id: 'pilihKelasNilai', defaultOpt: '<option value="" disabled selected>-- Silakan Pilih Kelas Dulu --</option>' },
+        { id: 'filterKelasDataNilai', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Terlebih Dahulu --</option>' },
+        { id: 'filterKelasRanking', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Untuk Melihat Ranking --</option>' },
+        { id: 'settingKelas', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas --</option>' },
+        { id: 'mutasiKelasAsal', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Asal --</option>' },
+        { id: 'mutasiKelasTujuan', defaultOpt: '<option value="" disabled selected>-- Pilih Tujuan --</option><option value="Lulus / Alumni" class="text-green-600 font-bold">🎓 LULUS / ALUMNI</option><option value="Diberhentikan" class="text-red-600 font-bold">🚫 DIBERHENTIKAN (DO)</option><option disabled>───────────────</option>' },
+        
+        // Tambahan untuk Modal
+        { id: 'add_kelas', defaultOpt: '<option value="" disabled selected>Pilih...</option>' },
+        { id: 'edit_kelas', defaultOpt: '<option value="" disabled selected>Pilih...</option>' }
+    ];
+
+    listDropdown.forEach(dropdown => {
+        const elemen = document.getElementById(dropdown.id);
+        if (elemen) {
+            elemen.innerHTML = dropdown.defaultOpt + htmlOpsi;
+        }
+    });
+}
+
+// =========================================================
+// FUNGSI DOWNLOAD TEMPLATE EXCEL (.XLSX) RAPI & BERWARNA
+// =========================================================
+async function downloadTemplateExcel() {
+    showLoading(true); // Memunculkan animasi loading
+
+    try {
+        // Buat buku kerja (workbook) Excel baru
+        const workbook = new ExcelJS.Workbook();
+        const sheet = workbook.addWorksheet('Data Santri');
+
+        // 1. Tentukan Judul Kolom dan Lebarnya agar otomatis pas
+        sheet.columns = [
+            { header: 'NIS', key: 'nis', width: 15 },
+            { header: 'Nama Lengkap', key: 'nama', width: 28 },
+            { header: 'L/P', key: 'jk', width: 12 },
+            { header: 'Tempat & Tanggal Lahir', key: 'ttl', width: 30 },
+            { header: 'Kelas', key: 'kelas', width: 20 },
+            { header: 'Alamat/Domisili', key: 'alamat', width: 35 },
+            { header: 'Nama Ayah', key: 'ayah', width: 22 },
+            { header: 'Nama Ibu', key: 'ibu', width: 22 },
+            { header: 'No HP/WA', key: 'hp', width: 18 }
+        ];
+
+        // 2. Warnai Header (Baris ke-1) Menjadi Hijau Khas Madasa
+        const headerRow = sheet.getRow(1);
+        headerRow.eachCell((cell) => {
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF059669' } // Kode warna hijau emerald-600 Tailwind
+            };
+            cell.font = {
+                color: { argb: 'FFFFFFFF' }, // Huruf Putih
+                bold: true // Huruf Tebal
+            };
+            cell.alignment = { vertical: 'middle', horizontal: 'center' };
+        });
+
+        // 3. Masukkan Contoh Data
+        sheet.addRow({nis: '84260001', nama: 'Ahmad Hafiz', jk: 'Laki-laki', ttl: 'Bangkalan, 12 Januari 2020', kelas: 'TK - Kelas A', alamat: 'Jl. Kenanga No. 12 Bangkalan', ayah: 'Budi Santoso', ibu: 'Siti Aminah', hp: '081234567890'});
+        sheet.addRow({nis: '84260002', nama: 'Aisyah Azzahra', jk: 'Perempuan', ttl: 'Surabaya, 05 Maret 2016', kelas: 'IBT - Kelas 3', alamat: 'Jl. Melati No. 5 Surabaya', ayah: 'Ahmad Fauzi', ibu: 'Nurul Hidayah', hp: '081298765432'});
+        sheet.addRow({nis: '84260003', nama: 'Muhammad Fatih', jk: 'Laki-laki', ttl: 'Sampang, 20 Agustus 2013', kelas: 'SANA - Kelas 1', alamat: 'Desa Banyuates, Sampang', ayah: 'Abdul Somad', ibu: 'Fatimah', hp: '085234567891'});
+        sheet.addRow({nis: '84260004', nama: 'Zahra Nabila', jk: 'Perempuan', ttl: 'Pamekasan, 10 November 2010', kelas: 'ALIYAH - Kelas 10', alamat: 'Jl. Pahlawan, Pamekasan', ayah: 'Hasan Basri', ibu: 'Amina', hp: '087712345678'});
+
+        // 4. Mencegah Angka 0 di HP Hilang (Ubah tipe kolom khusus No HP menjadi Teks)
+        sheet.getColumn('hp').eachCell((cell, rowNumber) => {
+            if (rowNumber > 1) { // Abaikan header
+                cell.numFmt = '@'; // '@' adalah kode format Teks di Excel
+            }
+        });
+
+        // 5. Proses Konversi dan Download Otomatis
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "Template_Import_Madasa.xlsx"; // Mengunduh sebagai .xlsx
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showLoading(false); // Matikan animasi loading
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Template Excel Siap Digunakan!',
+            showConfirmButton: false,
+            timer: 3000
+        });
+        
+    } catch (error) {
+        showLoading(false);
+        console.error(error);
+        Swal.fire('Error', 'Terjadi kesalahan saat membuat file Excel.', 'error');
+    }
+}
+
+// =========================================================
+// FUNGSI HAPUS DATA SANTRI (ADMIN ONLY)
+// =========================================================
+function hapusDataSantri(nis, nama) {
+    Swal.fire({
+        title: 'Hapus Santri?',
+        html: `Apakah Anda yakin ingin menghapus <b>${nama}</b> (NIS: ${nis})?<br><br><span class="text-red-500 text-xs font-bold"><i class="fas fa-exclamation-triangle"></i> Peringatan: Data yang dihapus tidak bisa dikembalikan!</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="fas fa-trash-alt mr-2"></i> Ya, Hapus!',
+        cancelButtonText: 'Batal',
+        customClass: {
+            popup: 'rounded-2xl',
+            confirmButton: 'rounded-xl',
+            cancelButton: 'rounded-xl'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showLoading(true, "Menghapus Data...");
+            
+            const formData = new URLSearchParams();
+            formData.append('action', 'deleteSantri');
+            formData.append('token', sessionStorage.getItem('tokenMadasa'));
+            formData.append('nis', nis);
+
+            fetch(GAS_URL, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                showLoading(false);
+                if(data.status === 'success') {
+                    Swal.fire('Terhapus!', data.message, 'success');
+                    loadDataSantri(); // Refresh tabel secara otomatis
+                    buatOpsiSemuaKelasOtomatis(); // Update jumlah dropdown kelas
+                } else {
+                    Swal.fire('Gagal', data.message, 'error');
+                }
+            }).catch(err => {
+                showLoading(false);
+                Swal.fire('Error', 'Gagal menghubungi server.', 'error');
+            });
+        }
+    });
+}

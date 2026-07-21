@@ -36,7 +36,9 @@
         tailwind.config = { theme: { extend: { colors: { emerald: { 600: '#059669', 700: '#047857', 800: '#065f46' }, gold: '#D4AF37' }, fontFamily: { sans: ['Inter', 'sans-serif'], heading: ['Poppins', 'sans-serif'] } } } }
     </script>
 	
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- TAMBAHKAN SCRIPT INI UNTUK EXCELJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     
     <link rel="stylesheet" href="style.css?v=4">
 	
@@ -406,17 +408,25 @@
                                 <button onclick="showView('home')" class="flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 text-gray-600 hover:bg-teal-100 hover:text-teal-600 transition-all shadow-sm shrink-0"><i class="fas fa-arrow-left"></i></button>
                                 <div><h3 class="text-lg sm:text-xl font-heading font-bold text-gray-800">Data Induk Santri</h3><p class="text-xs text-gray-500 mt-0.5 sm:mt-1">Manajemen biodata seluruh santri aktif</p></div>
                             </div>
-							
-                           <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-    <button onclick="cetakDataSantri()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm transition-all flex items-center justify-center gap-2 text-sm font-bold">
-        <i class="fas fa-print"></i> Cetak / Print
-    </button>
+						<div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+    <!-- TOMBOL BARU: Download Template -->
+
+<button onclick="downloadTemplateExcel()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-gray-500 text-white rounded-xl hover:bg-gray-600 shadow-sm transition-all flex items-center justify-center gap-2 text-sm font-bold">
+    <i class="fas fa-file-excel"></i> Template XLSX
+</button>
+    
     <button onclick="openModalImportSantri()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 shadow-sm transition-all flex items-center justify-center gap-2 text-sm font-bold">
         <i class="fas fa-file-import"></i> Import
     </button>
+	
     <button onclick="openModalSantri()" class="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-teal-600 text-white rounded-xl hover:bg-teal-700 shadow-sm transition-all flex items-center justify-center gap-2 text-sm font-bold">
-        <i class="fas fa-user-plus"></i> Tambah Santri
+        <i class="fas fa-user-plus"></i> Tambah
     </button>
+	
+	    <button onclick="cetakDataSantri()" class="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 shadow-sm transition-all flex items-center justify-center gap-2 text-sm font-bold">
+        <i class="fas fa-print"></i> Cetak
+    </button>
+	
 </div>
                         </div>
                         <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-5 sm:mb-6">
@@ -424,12 +434,13 @@
                                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                                 <input type="text" id="searchSantri" onkeyup="filterSantri()" placeholder="Cari nama atau NIS santri..." class="w-full pl-11 pr-4 py-3 sm:py-2.5 border border-gray-200 rounded-xl focus:ring-teal-500 focus:border-teal-500 outline-none text-sm bg-gray-50 focus:bg-white transition-all">
                             </div>
-                            <select id="filterKelasSantri" onchange="filterSantri()" class="w-full sm:w-48 p-3 sm:p-2.5 border border-gray-200 rounded-xl focus:ring-teal-500 outline-none text-sm bg-gray-50 focus:bg-white transition-all font-medium text-gray-700">
-                                <option value="Semua">Semua Kelas</option>
-                                <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                                <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                                <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                            </select>
+							
+							
+                        <select id="filterKelasSantri" onchange="filterSantri()" class="w-full sm:w-48 p-3 sm:p-2.5 border border-gray-200 rounded-xl focus:ring-teal-500 outline-none text-sm bg-gray-50 focus:bg-white transition-all font-medium text-gray-700">
+    <option value="Semua">Semua Kelas</option>
+</select>
+							
+							
                         </div>
                         <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
                             <table class="w-full text-left border-collapse" id="tabelSantri">
@@ -468,12 +479,11 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-5 sm:mb-6 bg-teal-50 p-4 sm:p-5 rounded-xl border border-teal-200">
                             <div>
                                 <label class="block text-xs sm:text-sm font-bold text-teal-800 mb-1.5 sm:mb-2">1. Pilih Kelas</label>
-                                <select id="pilihKelasNilai" onchange="aktifkanFilterKedua()" class="w-full p-3 border border-teal-300 rounded-xl focus:ring-teal-500 focus:border-teal-500 outline-none font-medium bg-white shadow-sm transition-all text-sm sm:text-base">
-                                    <option value="" disabled selected>-- Silakan Pilih Kelas Dulu --</option>
-                                    <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                                    <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                                    <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                                </select>
+								
+                              <select id="pilihKelasNilai" onchange="aktifkanFilterKedua()" class="w-full p-3 border border-teal-300 rounded-xl focus:ring-teal-500 focus:border-teal-500 outline-none font-medium bg-white shadow-sm transition-all text-sm sm:text-base">
+    <option value="" disabled selected>-- Silakan Pilih Kelas Dulu --</option>
+</select>
+								
                             </div>
                             <div id="wadahFilterKedua" class="hidden">
                                 <label id="labelFilterKedua" class="block text-xs sm:text-sm font-bold text-teal-800 mb-1.5 sm:mb-2">2. Pilihan Kedua</label>
@@ -574,12 +584,13 @@
                         <div class="bg-blue-50 p-4 sm:p-5 rounded-xl border border-blue-100 mb-6">
                             <label class="block text-sm font-bold text-blue-800 mb-2">Pilih Kelas Laporan:</label>
                             <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
-                                <select id="filterKelasDataNilai" class="w-full sm:flex-1 p-3 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white shadow-sm transition-all text-gray-700 font-medium">
-                                    <option value="" disabled selected>-- Pilih Kelas Terlebih Dahulu --</option>
-                                    <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                                    <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                                    <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                                </select>
+							
+							
+                          <select id="filterKelasDataNilai" class="w-full sm:flex-1 p-3 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white shadow-sm transition-all text-gray-700 font-medium">
+    <option value="" disabled selected>-- Pilih Kelas Terlebih Dahulu --</option>
+</select>
+								
+								
                                 <button onclick="loadDataNilaiKelas()" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-bold text-sm shadow-sm flex items-center justify-center gap-2">
                                     <i class="fas fa-search"></i> Tampilkan Laporan
                                 </button>
@@ -645,12 +656,12 @@
                             <div><h3 class="text-lg font-heading font-bold text-gray-800">Ranking Per Kelas</h3></div>
                         </div>
                         <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 mb-6 flex flex-col sm:flex-row gap-3">
-                            <select id="filterKelasRanking" class="w-full sm:flex-1 p-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700">
-                                <option value="" disabled selected>-- Pilih Kelas Untuk Melihat Ranking --</option>
-                                <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                                <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                                <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                            </select>
+						
+                  <select id="filterKelasRanking" class="w-full sm:flex-1 p-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700">
+    <option value="" disabled selected>-- Pilih Kelas Untuk Melihat Ranking --</option>
+</select>
+							
+							
                             <button onclick="loadRankingKelas()" class="w-full sm:w-auto px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all">
                                 <i class="fas fa-trophy"></i> Lihat Ranking
                             </button>
@@ -725,12 +736,12 @@
 
                         <div class="bg-teal-50 p-4 rounded-xl border border-teal-100 mb-6">
                             <label class="block text-sm font-bold text-teal-800 mb-2">Pilih Kelas yang Akan Diatur:</label>
-                            <select id="settingKelas" onchange="loadSettingRapor()" class="w-full p-3 border border-teal-300 rounded-xl font-bold bg-white text-teal-700 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm cursor-pointer">
-                                <option value="" disabled selected>-- Pilih Kelas --</option>
-                                <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                                <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                                <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                            </select>
+							
+                 <select id="settingKelas" onchange="loadSettingRapor()" class="w-full p-3 border border-teal-300 rounded-xl font-bold bg-white text-teal-700 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm cursor-pointer">
+    <option value="" disabled selected>-- Pilih Kelas --</option>
+</select>
+							
+							
                         </div>
 
                         <form id="formSettingRapor" class="hidden">
@@ -864,25 +875,27 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                             <div>
                                 <label class="block text-sm font-bold text-indigo-800 mb-2">1. Pilih Kelas Asal:</label>
-                                <select id="mutasiKelasAsal" onchange="loadTabelMutasi()" class="w-full p-3 border border-indigo-300 rounded-xl font-medium bg-white text-gray-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer">
-                                    <option value="" disabled selected>-- Pilih Kelas Asal --</option>
-                                    <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                                    <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                                    <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                                </select>
+								
+								
+                            <select id="mutasiKelasAsal" onchange="loadTabelMutasi()" class="w-full p-3 border border-indigo-300 rounded-xl font-medium bg-white text-gray-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer">
+    <option value="" disabled selected>-- Pilih Kelas Asal --</option>
+</select>
+								
+								
                             </div>
                             <div>
                                 <label class="block text-sm font-bold text-indigo-800 mb-2">2. Pilih Tujuan Mutasi:</label>
                                 <div class="flex gap-2">
-                                    <select id="mutasiKelasTujuan" class="w-full p-3 border border-indigo-300 rounded-xl font-bold bg-white text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer">
-                                        <option value="" disabled selected>-- Pilih Tujuan --</option>
-                                        <option value="Lulus / Alumni" class="text-green-600 font-bold">🎓 LULUS / ALUMNI</option>
-                                        <option value="Diberhentikan" class="text-red-600 font-bold">🚫 DIBERHENTIKAN (DO)</option>
-                                        <option disabled>───────────────</option>
-                                        <optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup>
-                                        <optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup>
-                                        <optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup>
-                                    </select>
+								
+								
+                          <select id="mutasiKelasTujuan" class="w-full p-3 border border-indigo-300 rounded-xl font-bold bg-white text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer">
+    <option value="" disabled selected>-- Pilih Tujuan --</option>
+    <option value="Lulus / Alumni" class="text-green-600 font-bold">🎓 LULUS / ALUMNI</option>
+    <option value="Diberhentikan" class="text-red-600 font-bold">🚫 DIBERHENTIKAN (DO)</option>
+    <option disabled>───────────────</option>
+</select>
+									
+									
                                     <button onclick="prosesMutasi()" class="px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all whitespace-nowrap"><i class="fas fa-paper-plane mr-2"></i> Proses</button>
                                 </div>
                             </div>
@@ -961,7 +974,14 @@
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label><select id="add_jk" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-teal-500 outline-none text-sm" required><option value="" disabled selected>Pilih...</option><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Penempatan Kelas</label><select id="add_kelas" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-teal-500 outline-none text-sm" required><option value="" disabled selected>Pilih...</option><optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup><optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup><optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup></select></div>
+                <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Penempatan Kelas</label>
+				
+			<!-- Di Form Tambah Santri -->
+<select id="add_kelas" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-teal-500 outline-none text-sm" required>
+    <option value="" disabled selected>Pilih...</option>
+</select>
+				
+				</div>
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">No. HP/WA</label><input type="tel" id="add_hp" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-teal-500 outline-none text-sm" required></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -1009,7 +1029,14 @@
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Jenis Kelamin</label><select id="edit_jk" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-blue-500 outline-none text-sm" required><option value="Laki-laki">Laki-laki</option><option value="Perempuan">Perempuan</option></select></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Penempatan Kelas</label><select id="edit_kelas" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-blue-500 outline-none text-sm" required><optgroup label="TK"><option value="TK - TK 1">TK 1</option><option value="TK - TK 2">TK 2</option><option value="TK - TK 3">TK 3</option><option value="TK - TK 4">TK 4</option><option value="TK - TK 5">TK 5</option></optgroup><optgroup label="IBTIDAIYAH"><option value="IBT - Kelas I">Kelas I</option><option value="IBT - Kelas II">Kelas II</option><option value="IBT - Kelas III">Kelas III</option><option value="IBT - Kelas IV">Kelas IV</option><option value="IBT - Kelas V">Kelas V</option><option value="IBT - Kelas VI">Kelas VI</option></optgroup><optgroup label="SANAWIYAH"><option value="SANA - Kelas 1">Kelas 1</option><option value="SANA - Kelas 2">Kelas 2</option><option value="SANA - Kelas 3">Kelas 3</option></optgroup></select></div>
+                <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Penempatan Kelas</label>
+				
+			<!-- Di Form Edit Santri -->
+<select id="edit_kelas" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-blue-500 outline-none text-sm" required>
+    <option value="" disabled selected>Pilih...</option>
+</select>
+				
+				</div>
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">No. HP/WA</label><input type="tel" id="edit_hp" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-blue-500 outline-none text-sm" required></div>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -1045,25 +1072,30 @@
 
 
 	
-	<div id="modalImportSantri" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4">
+<!-- ============================================== -->
+<!-- MODAL IMPORT SANTRI (VERSI EXCEL/XLSX) -->
+<!-- ============================================== -->
+<div id="modalImportSantri" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm hidden p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 sm:p-6 transform transition-all">
         <div class="flex justify-between items-center border-b pb-3 mb-4">
             <h3 class="text-base sm:text-lg font-heading font-bold text-gray-800"><i class="fas fa-file-excel text-green-600 mr-2"></i>Import Data Santri</h3>
             <button onclick="closeModalImportSantri()" class="text-gray-400 hover:text-red-500 transition-all"><i class="fas fa-times text-xl"></i></button>
         </div>
         
-        <div class="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs mb-4">
-            <b>ATURAN IMPORT:</b><br>
-            1. Buat file Excel dengan urutan kolom persis seperti urutan di database: <b>NIS, Nama, L/P, TTL, Kelas, Alamat, Ayah, Ibu, HP</b>.<br>
-            2. Simpan file Excel (Save As) menjadi format <b>CSV (Comma delimited)</b>.<br>
-            3. Upload file CSV tersebut ke area di bawah ini.
+        <!-- PANDUAN SUDAH DIUPDATE UNTUK EXCEL -->
+        <div class="bg-green-50 border border-green-200 text-green-800 p-3 rounded-xl text-xs mb-4">
+            <b>ATURAN IMPORT EXCEL:</b><br>
+            1. Unduh Template dengan mengklik tombol <b>Template XLSX</b>.<br>
+            2. Isi data santri (Jangan ubah format kolom atau nama sheet).<br>
+            3. Langsung upload file <b>Excel (.xlsx)</b> tersebut ke area di bawah ini tanpa perlu diubah ke format lain.
         </div>
 
         <form id="formImportSantri">
-            <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-all cursor-pointer relative">
-                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-2"></i>
-                <p class="text-sm font-bold text-gray-600">Klik Untuk Memilih File CSV</p>
-                <input type="file" id="fileImportCSV" accept=".csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required onchange="document.getElementById('namaFileCsv').innerText = this.files[0].name">
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-green-50 transition-all cursor-pointer relative group">
+                <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 group-hover:text-green-500 transition-colors mb-2"></i>
+                <!-- TEKS DAN ACCEPT DIUBAH KE XLSX -->
+                <p class="text-sm font-bold text-gray-600 group-hover:text-green-600">Klik Untuk Memilih File Excel (.xlsx)</p>
+                <input type="file" id="fileImportCSV" accept=".xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" required onchange="document.getElementById('namaFileCsv').innerText = this.files[0].name">
             </div>
             <p id="namaFileCsv" class="text-center text-xs text-green-600 font-bold mt-2"></p>
             
