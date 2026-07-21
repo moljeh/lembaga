@@ -139,16 +139,16 @@ function buatDropdownKelasOtomatis() {
         return bobotA - bobotB;
     });
 
-   // 5. Susun elemen HTML opsi sesuai urutan (Trik Pembatas untuk Mobile Native)
+    // 5. Susun elemen HTML opsi sesuai urutan (TANPA optgroup agar bersih dari garis bawaan HP)
     let htmlOpsi = '<option value="" disabled selected>-- Pilih Kelas --</option>';
+    
     kategoriUrut.forEach(kategori => {
-        
-        // Buat opsi 'disabled' sebagai pengganti optgroup (berlaku sebagai judul/pemisah)
-        htmlOpsi += `<option value="" disabled> ━━━ ${kategori} ━━━ </option>`;
+        // Judul kategori (dibuat 'disabled' agar tidak bisa dipilih)
+        htmlOpsi += `<option value="" disabled>▪️ ${kategori}</option>`;
         
         kelompokKelas[kategori].forEach(kelas => {
-            // Tambahkan spasi (menggunakan &nbsp;) agar kelas menjorok ke dalam (indentasi)
-            htmlOpsi += `<option value="${kelas}">&nbsp;&nbsp;&nbsp;&nbsp;${kelas}</option>`;
+            // Daftar kelas di bawahnya diberi spasi (Em Space) agar menjorok ke dalam
+            htmlOpsi += `<option value="${kelas}">  ${kelas}</option>`;
         });
     });
 
@@ -616,56 +616,6 @@ document.getElementById('formPengeluaran').addEventListener('submit', function(e
     fd.append('action', 'addPengeluaran');
     fd.append('token', sessionStorage.getItem('tokenMadasa'));
     fd.append('tanggal', tanggalGabungan); // Mengirim format gabungan ke Google Apps Script
-    fd.append('keterangan', keterangan);
-    fd.append('nominal', nominalKeluar);
-    fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin');
-
-    fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
-        showLoading(false);
-        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
-        
-        if (res.status === 'success') {
-            closeModalPengeluaran();
-            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengeluaran dicatat!', showConfirmButton:false, timer:2000});
-            loadBukuKas(); 
-        } else {
-            Swal.fire('Gagal', res.message, 'error');
-        }
-    }).catch(e => {
-        showLoading(false);
-        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
-        Swal.fire('Error', 'Koneksi gagal.', 'error');
-    });
-});
-
-document.getElementById('formPengeluaran').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const nominalKeluar = getAngkaMurni(document.getElementById('out_nominal').value);
-    
-    if (nominalKeluar > SALDO_SAAT_INI) {
-        return Swal.fire({
-            icon: 'error',
-            title: 'Saldo Tidak Cukup!',
-            html: `Anda mencoba mengeluarkan <b>${formatRp(nominalKeluar)}</b>, <br>sedangkan saldo saat ini hanya <b>${formatRp(SALDO_SAAT_INI)}</b>.`
-        });
-    }
-
-    if (nominalKeluar <= 0) return Swal.fire('Perhatian', 'Nominal tidak valid', 'warning');
-
-    const btnSubmit = this.querySelector('button[type="submit"]');
-    const teksAsli = btnSubmit.innerHTML;
-    btnSubmit.disabled = true; 
-    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
-
-    const tanggal = document.getElementById('out_tanggal').value;
-    const keterangan = document.getElementById('out_keterangan').value;
-    
-    showLoading(true, "Mencatat Pengeluaran...");
-
-    const fd = new URLSearchParams();
-    fd.append('action', 'addPengeluaran');
-    fd.append('token', sessionStorage.getItem('tokenMadasa'));
-    fd.append('tanggal', tanggal);
     fd.append('keterangan', keterangan);
     fd.append('nominal', nominalKeluar);
     fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin');
