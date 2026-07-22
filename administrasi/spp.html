@@ -9,11 +9,43 @@
 
     <link rel="icon" type="image/png" href="../asset/logoweb.png">
     <link rel="shortcut icon" href="../asset/logoweb.png" type="image/png">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../style.css?v=4">
+
+    <!-- Tambahkan tag style ini di sini -->
+    <style>
+        /* Desain Custom Dropdown Kelas */
+        .custom-option-group {
+            font-weight: 700;
+            color: #047857; /* text-emerald-700 */
+            background-color: #f1f5f9; /* bg-slate-100 */
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            cursor: default;
+        }
+        /* Garis pemisah rapi di atas judul jenjang (kecuali yang pertama) */
+        .custom-option-group:not(:first-child) {
+            border-top: 1px dashed #cbd5e1;
+        }
+        .custom-option-item {
+            padding: 10px 12px 10px 24px; /* Memberikan efek menjorok/indentasi */
+            font-weight: 600;
+            color: #334155;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f8fafc;
+            transition: all 0.2s ease;
+        }
+        .custom-option-item:hover {
+            background-color: #ecfdf5; /* warna hijau tipis saat disentuh */
+            color: #059669;
+            padding-left: 28px; /* Efek geser kanan sedikit saat hover */
+        }
+    </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
@@ -183,16 +215,28 @@
             </div>
         </div>
 
-        <!-- Area Kontrol (Filter Kelas & Tambah Data) -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-4 justify-between items-center">
-<div class="w-full sm:w-1/2">
-    <label class="block text-xs font-bold text-gray-700 mb-1">Filter Berdasarkan Kelas:</label>
-    <select id="filterKelasSpp" onchange="loadDataSpp()" class="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm font-bold text-emerald-800 bg-emerald-50">
-        <option value="" disabled selected>-- Pilih Kelas --</option>
-        <!-- Opsi kelas sekarang akan diisi otomatis oleh JavaScript dari Database -->
-    </select>
-</div>
-            <button onclick="openModalSpp('tambah')" class="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+<!-- Area Kontrol (Filter Kelas & Tambah Data) -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-4 justify-between items-center relative z-20">
+            
+            <div class="w-full sm:w-1/2 relative" id="customSelectWrapper">
+                <label class="block text-xs font-bold text-gray-700 mb-1">Filter Berdasarkan Kelas:</label>
+                
+                <!-- Tampilan Kotak Custom -->
+                <div id="customSelectDisplay" class="w-full p-2.5 border border-gray-300 rounded-xl bg-emerald-50 text-emerald-800 text-sm font-bold flex justify-between items-center cursor-pointer hover:border-emerald-400 transition-all shadow-sm">
+                    <span id="customSelectText">-- Pilih Kelas --</span>
+                    <i class="fas fa-chevron-down text-emerald-600 transition-transform duration-300" id="customSelectIcon"></i>
+                </div>
+                
+                <!-- Input Tersembunyi (Menyimpan Value untuk diolah JavaScript) -->
+                <input type="hidden" id="filterKelasSpp" value="">
+
+                <!-- Daftar Pilihan Custom (Akan diisi JS) -->
+                <ul id="customSelectList" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden custom-scrollbar">
+                    <!-- Opsi Kelas akan muncul di sini -->
+                </ul>
+            </div>
+
+            <button onclick="openModalSpp('tambah')" class="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 shrink-0">
                 <i class="fas fa-plus"></i> Tambah / Perbarui SPP
             </button>
         </div>
