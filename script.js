@@ -794,6 +794,9 @@ function filterSantri() {
     } 
 }
 
+// =================================================================
+// OPTIMASI: Menampilkan Data Santri (Anti-Lag untuk Ribuan Data)
+// =================================================================
 function loadDataSantri(silent = false) { 
     if (!silent) showLoading(true); 
     const formData = new URLSearchParams(); 
@@ -808,13 +811,16 @@ function loadDataSantri(silent = false) {
             
             const tbody = document.getElementById('bodyTabelSantri'); 
             if(tbody) { 
-                tbody.innerHTML = ''; 
                 if(res.data.length === 0) { 
-                    tbody.innerHTML = '<tr><td colspan=\"6\" class=\"p-4 sm:p-6 text-center text-gray-500\">Belum ada data santri di database.</td></tr>'; return; 
+                    tbody.innerHTML = '<tr><td colspan=\"6\" class=\"p-4 sm:p-6 text-center text-gray-500\">Belum ada data santri di database.</td></tr>'; 
+                    return; 
                 } 
+
+                // SIAPKAN ARRAY PENAMPUNG DI MEMORI (SUPER CEPAT)
+                let barisHTML = [];
+                const roleSaatIni = sessionStorage.getItem('roleMadasa') || '';
+
                 res.data.forEach(s => { 
-                    const tr = document.createElement('tr'); 
-                    tr.className = 'hover:bg-teal-50 transition-all santri-row'; tr.setAttribute('data-kelas', s.kelas); 
                     let amanTampilNama = escapeHTML(s.nama);
                     let amanTampilKelas = escapeHTML(s.kelas);
                     let amanNama = s.nama ? s.nama.toString().replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;') : '';
@@ -823,23 +829,28 @@ function loadDataSantri(silent = false) {
                     let amanIbu = s.ibu ? s.ibu.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
                     let amanTtl = s.ttl ? s.ttl.toString().replace(/\\/g, '\\\\').replace(/`/g, "\\`").replace(/'/g, "\\'") : '';
 
-                    const roleSaatIni = sessionStorage.getItem('roleMadasa') || '';
                     const tombolHapus = (!roleSaatIni.includes('Guru')) 
                         ? `<button onclick="hapusDataSantri('${s.nis}', '${amanNama}')" class="text-red-500 hover:bg-red-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Hapus Data"><i class="fas fa-trash-alt"></i></button>` : '';
 
-                    tr.innerHTML = `<td class="p-3 sm:p-4 text-center font-bold text-gray-500 urut-nomor"></td>
-                    <td class="p-3 sm:p-4 font-medium">${escapeHTML(s.nis)}</td>
-                    <td class="p-3 sm:p-4 font-bold text-gray-800 whitespace-nowrap">${amanTampilNama}</td>
-                    <td class="p-3 sm:p-4 text-center whitespace-nowrap">${escapeHTML(s.jk)}</td>
-                    <td class="p-3 sm:p-4 whitespace-nowrap"><span class="bg-teal-100 text-teal-700 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap">${amanTampilKelas}</span></td>
-                    <td class="p-3 sm:p-4 text-center">
-                        <div class="flex items-center justify-center gap-2">
-                            <button onclick="openModalEditSantri('${s.nis}', '${amanNama}', '${s.jk}', '${s.kelas}', \`${amanAlamat}\`, \`${amanAyah}\`, \`${amanIbu}\`, '${s.hp}', \`${amanTtl}\`)" class="text-blue-500 hover:bg-blue-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Edit Data"><i class="fas fa-edit"></i></button>
-                            ${tombolHapus}
-                        </div>
-                    </td>`;
-                    tbody.appendChild(tr); 
+                    // DORONG STRING HTML KE DALAM ARRAY
+                    barisHTML.push(`
+                    <tr class="hover:bg-teal-50 transition-all santri-row" data-kelas="${amanTampilKelas}">
+                        <td class="p-3 sm:p-4 text-center font-bold text-gray-500 urut-nomor"></td>
+                        <td class="p-3 sm:p-4 font-medium">${escapeHTML(s.nis)}</td>
+                        <td class="p-3 sm:p-4 font-bold text-gray-800 whitespace-nowrap">${amanTampilNama}</td>
+                        <td class="p-3 sm:p-4 text-center whitespace-nowrap">${escapeHTML(s.jk)}</td>
+                        <td class="p-3 sm:p-4 whitespace-nowrap"><span class="bg-teal-100 text-teal-700 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap">${amanTampilKelas}</span></td>
+                        <td class="p-3 sm:p-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                <button onclick="openModalEditSantri('${s.nis}', '${amanNama}', '${s.jk}', '${s.kelas}', \`${amanAlamat}\`, \`${amanAyah}\`, \`${amanIbu}\`, '${s.hp}', \`${amanTtl}\`)" class="text-blue-500 hover:bg-blue-100 p-2 sm:p-2.5 rounded-lg transition-all" title="Edit Data"><i class="fas fa-edit"></i></button>
+                                ${tombolHapus}
+                            </div>
+                        </td>
+                    </tr>`);
                 });
+                
+                // EKSEKUSI KE LAYAR HANYA 1 KALI (Mencegah reflow berulang)
+                tbody.innerHTML = barisHTML.join('');
                 filterSantri(); 
             } 
         } 
@@ -1020,49 +1031,54 @@ function aktifkanFilterKedua() {
     } 
 }
 
+// =================================================================
+// OPTIMASI: Men-generate Tabel Input Nilai Massal
+// =================================================================
 function generateTabelAbsen() { 
     const kelas = document.getElementById('pilihKelasNilai').value; 
     const subFilterValue = document.getElementById('pilihFilterKedua').value; 
     const santriKelasIni = GLOBAL_DATA_SANTRI.filter(s => s.kelas === kelas); 
     const tbody = document.getElementById('bodyTabelAbsen'); 
     const wadahGlobalMapelTK = document.getElementById('wadahGlobalMapelTK'); 
-    tbody.innerHTML = ''; 
     
     if (santriKelasIni.length === 0) { 
         tbody.innerHTML = '<tr><td colspan="10" class="p-6 text-center text-red-500 font-bold"><i class="fas fa-exclamation-triangle mr-2"></i> Kelas ini masih kosong, belum ada santri.</td></tr>'; 
     } else { 
+        // SIAPKAN ARRAY PENAMPUNG HTML
+        let barisHTML = [];
+        
         santriKelasIni.forEach((s, idx) => { 
             let html = `<tr class="hover:bg-emerald-50 transition-all santri-absen-row"> <td class="p-3 text-center text-gray-500 font-medium border-r border-gray-200">${idx + 1}</td>`; 
             
-if (kelas.includes('TK')) { 
+            if (kelas.includes('TK')) { 
                 html += `<td class="p-3 text-sm border-r border-gray-200 text-gray-500 whitespace-nowrap">${s.nis}</td> <td class="p-3 border-r border-gray-200 md:sticky md:left-0 bg-white z-10 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px] max-w-[200px]"> <p class="font-bold text-gray-800 whitespace-normal text-xs sm:text-sm leading-snug">${s.nama}</p> </td> <td class="p-2 border-r border-gray-200 bg-gray-50"><input type="number" class="input-tk-n1 w-16 sm:w-20 mx-auto block p-2 border border-gray-300 rounded-lg font-bold text-center outline-none focus:ring-2 focus:ring-emerald-500" data-nis="${s.nis}" placeholder="N1" oninput="validasiInputNilai(this)"></td> <td class="p-2 bg-gray-50"><input type="number" class="input-tk-n2 w-16 sm:w-20 mx-auto block p-2 border border-gray-300 rounded-lg font-bold text-center outline-none focus:ring-2 focus:ring-emerald-500" placeholder="N2" oninput="validasiInputNilai(this)"></td>`; 
             } else { 
                 document.getElementById('judulKolomNilai').innerText = `NILAI ${subFilterValue}`;
                 html += `<td class="p-3 text-sm border-r border-gray-200 text-gray-500 whitespace-nowrap">${s.nis}</td> <td class="p-3 border-r border-gray-200 md:sticky md:left-0 bg-white z-10 md:shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] min-w-[140px] max-w-[200px]"> 
-				<p class="font-bold text-gray-800 whitespace-normal text-xs sm:text-sm leading-snug">${escapeHTML(s.nama)}</p> </td> <td class="p-3 text-center bg-gray-50"><input type="number" class="input-ibt w-full min-w-[90px] max-w-[120px] mx-auto block p-2 border-2 border-gray-300 rounded-lg font-bold text-center text-emerald-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 shadow-inner outline-none" data-nis="${escapeHTML(s.nis)}" data-nama="${escapeHTML(s.nama)}" placeholder="0-100" oninput="validasiInputNilai(this)"></td>`; // <-- INI YANG DITAMBAHKAN
+                <p class="font-bold text-gray-800 whitespace-normal text-xs sm:text-sm leading-snug">${escapeHTML(s.nama)}</p> </td> <td class="p-3 text-center bg-gray-50"><input type="number" class="input-ibt w-full min-w-[90px] max-w-[120px] mx-auto block p-2 border-2 border-gray-300 rounded-lg font-bold text-center text-emerald-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500 shadow-inner outline-none" data-nis="${escapeHTML(s.nis)}" data-nama="${escapeHTML(s.nama)}" placeholder="0-100" oninput="validasiInputNilai(this)"></td>`; 
             } 
-            html += `</tr>`; tbody.innerHTML += html;
+            html += `</tr>`; 
+            
+            // DORONG HTML KE ARRAY
+            barisHTML.push(html);
         }); 
+        
+        // TULIS KE DOM 1 KALI SAJA
+        tbody.innerHTML = barisHTML.join('');
     } 
     
-   
-   if (kelas.includes('TK')) { 
+    // Konfigurasi Visibilitas UI (Tetap Sama)
+    if (kelas.includes('TK')) { 
         document.getElementById('headerTK').style.display = 'table-header-group'; 
         document.getElementById('headerIBT').style.display = 'none'; 
         wadahGlobalMapelTK.classList.remove('hidden'); 
-        
-        // Tampilkan Petunjuk Nilai khusus TK
         document.getElementById('petunjukPredikatTK').classList.remove('hidden');
-        // Sembunyikan Peringatan Ibtidaiyah/Sanawiyah
         document.getElementById('peringatanNilaiIbt').classList.add('hidden');
     } else { 
         document.getElementById('headerTK').style.display = 'none'; 
         document.getElementById('headerIBT').style.display = 'table-header-group'; 
         wadahGlobalMapelTK.classList.add('hidden'); 
-        
-        // Sembunyikan Petunjuk Nilai jika bukan kelas TK
         document.getElementById('petunjukPredikatTK').classList.add('hidden');
-        // Tampilkan Peringatan Ibtidaiyah/Sanawiyah
         document.getElementById('peringatanNilaiIbt').classList.remove('hidden');
     } 
     document.getElementById('formInputNilaiBulk').classList.remove('hidden'); 
@@ -1190,32 +1206,46 @@ function loadDataNilaiKelas(silent = false) {
     }); 
 }
 
+// =================================================================
+// OPTIMASI: Men-generate Tabel Rekap Nilai (Data Besar)
+// =================================================================
 function renderTabelDataNilai(headers, data) { 
-    GLOBAL_HEADERS_NILAI = headers; GLOBAL_DATA_NILAI = data; 
-    const thead = document.getElementById('headerDataNilai'); const tbody = document.getElementById('bodyDataNilai'); 
-    thead.innerHTML = ''; tbody.innerHTML = ''; 
+    GLOBAL_HEADERS_NILAI = headers; 
+    GLOBAL_DATA_NILAI = data; 
+    const thead = document.getElementById('headerDataNilai'); 
+    const tbody = document.getElementById('bodyDataNilai'); 
+    
+    // Kosongkan header, namun jangan sentuh tbody dulu (kita siapkan array)
+    thead.innerHTML = ''; 
+    let barisHTML = []; 
     
     if (!headers || headers.length === 0 || data.length === 0) { 
-        tbody.innerHTML = `<tr><td colspan="15" class="p-10 text-center text-red-500 font-medium"><i class="fas fa-folder-open text-4xl mb-3 block text-red-300"></i> Belum ada data nilai yang diinput oleh Guru untuk kelas ini.</td></tr>`; return; 
+        tbody.innerHTML = `<tr><td colspan="15" class="p-10 text-center text-red-500 font-medium"><i class="fas fa-folder-open text-4xl mb-3 block text-red-300"></i> Belum ada data nilai yang diinput oleh Guru untuk kelas ini.</td></tr>`; 
+        return; 
     } 
     
     let idxTotal = headers.findIndex(h => h.toLowerCase().includes('total'));
     let kls = document.getElementById('filterKelasDataNilai').value;
 
-    let trHead = '<tr>'; trHead += `<th class="p-3 text-center border-r border-gray-200 w-10 bg-gray-100">No</th>`; 
+    let trHead = '<tr>'; 
+    trHead += `<th class="p-3 text-center border-r border-gray-200 w-10 bg-gray-100">No</th>`; 
     headers.forEach((h) => { 
         let namaKolom = h.toLowerCase(); 
-        if (namaKolom.includes('nama')) { trHead += `<th class="p-3 border-r border-gray-200 sticky left-0 bg-gray-100 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">${h}</th>`; } 
-        else if (namaKolom.includes('nis')) { trHead += `<th class="p-3 border-r border-gray-200 whitespace-nowrap w-1 bg-gray-100">${h}</th>`; } 
-        else { trHead += `<th class="p-3 border-r border-gray-200 text-center whitespace-nowrap bg-gray-100">${h}</th>`; } 
+        if (namaKolom.includes('nama')) { 
+            trHead += `<th class="p-3 border-r border-gray-200 sticky left-0 bg-gray-100 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] whitespace-nowrap">${h}</th>`; 
+        } else if (namaKolom.includes('nis')) { 
+            trHead += `<th class="p-3 border-r border-gray-200 whitespace-nowrap w-1 bg-gray-100">${h}</th>`; 
+        } else { 
+            trHead += `<th class="p-3 border-r border-gray-200 text-center whitespace-nowrap bg-gray-100">${h}</th>`; 
+        } 
     }); 
-    trHead += `<th class="p-3 text-center bg-gray-100 w-24">AKSI</th></tr>`; thead.innerHTML = trHead; 
+    trHead += `<th class="p-3 text-center bg-gray-100 w-24">AKSI</th></tr>`; 
+    thead.innerHTML = trHead; 
     
     data.forEach((row, rowIndex) => { 
         let trBody = `<tr class="hover:bg-blue-50 transition-all">`; 
         trBody += `<td class="p-3 text-center text-gray-500 border-r border-gray-200">${rowIndex + 1}</td>`; 
         
-        // KALKULATOR RATA-RATA OTOMATIS ANTI BUG TANGGAL
         let totalNilai = idxTotal > -1 ? parseFloat(row[idxTotal] || 0) : 0;
         let rataBenar = "0.0";
         if (kls && !kls.includes('TK')) {
@@ -1225,25 +1255,28 @@ function renderTabelDataNilai(headers, data) {
 
         row.forEach((cell, cellIndex) => { 
             const headerName = headers[cellIndex].toLowerCase(); 
-if (headerName.includes('nama')) { 
-    trBody += `<td class="p-3 border-r border-gray-200 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold text-gray-800 whitespace-nowrap">${escapeHTML(cell)}</td>`; 
-} 
-else if (headerName.includes('nis')) { 
-    let textNIS = cell.toString().replace("'", ""); trBody += `<td class="p-3 border-r border-gray-200 text-gray-600 whitespace-nowrap">${escapeHTML(textNIS)}</td>`; 
-} 
-            else if (headerName.includes('rata')) {
-                // Terapkan rata-rata hasil hitung ulang agar tidak muncul Teks Tanggal
+            if (headerName.includes('nama')) { 
+                trBody += `<td class="p-3 border-r border-gray-200 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] font-bold text-gray-800 whitespace-nowrap">${escapeHTML(cell)}</td>`; 
+            } else if (headerName.includes('nis')) { 
+                let textNIS = cell.toString().replace("'", ""); 
+                trBody += `<td class="p-3 border-r border-gray-200 text-gray-600 whitespace-nowrap">${escapeHTML(textNIS)}</td>`; 
+            } else if (headerName.includes('rata')) {
                 let finalRata = kls.includes('TK') ? (!isNaN(parseFloat(cell)) ? parseFloat(cell).toFixed(1) : "0.0") : rataBenar;
                 trBody += `<td class="p-3 border-r border-gray-200 text-center font-bold text-blue-600 whitespace-nowrap">${finalRata}</td>`;
-                GLOBAL_DATA_NILAI[rowIndex][cellIndex] = finalRata; // Sinkronkan untuk menu Edit
-            }
-            else { 
-                const isNumber = !isNaN(cell) && cell !== ""; trBody += `<td class="p-3 border-r border-gray-200 text-center ${isNumber ? 'font-bold text-emerald-700' : 'text-gray-400'} whitespace-nowrap">${cell}</td>`; 
+                GLOBAL_DATA_NILAI[rowIndex][cellIndex] = finalRata; 
+            } else { 
+                const isNumber = !isNaN(cell) && cell !== ""; 
+                trBody += `<td class="p-3 border-r border-gray-200 text-center ${isNumber ? 'font-bold text-emerald-700' : 'text-gray-400'} whitespace-nowrap">${cell}</td>`; 
             } 
         }); 
         trBody += `<td class="p-3 text-center whitespace-nowrap"><button onclick="openModalEditNilai(${rowIndex})" class="text-blue-500 hover:bg-blue-100 p-2 rounded-lg transition-all shadow-sm border border-blue-200" title="Edit Data"><i class="fas fa-edit"></i> Edit</button></td></tr>`; 
-        tbody.innerHTML += trBody; 
+        
+        // DORONG KE ARRAY
+        barisHTML.push(trBody); 
     }); 
+    
+    // TULIS KE DOM 1 KALI SAJA
+    tbody.innerHTML = barisHTML.join(''); 
 }
 
 function openModalEditNilai(index) { 

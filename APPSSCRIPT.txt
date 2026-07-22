@@ -253,115 +253,205 @@ function updateDataSantri(e) {
 
 
 // =================================================================
-// FUNGSI MUTASI KELAS MASSAL
+// FUNGSI MUTASI KELAS MASSAL (OPTIMASI SKALA BESAR)
 // =================================================================
 function mutasiSantri(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var kelasTujuan = e.parameter.kelas_tujuan;
-  var nisList = JSON.parse(e.parameter.nis_list);
-
-  var sheetSantri = ss.getSheetByName('SANTRI');
-  var dataSantri = sheetSantri.getDataRange().getValues();
-  var jumlahDiupdate = 0;
-
-  // Loop dari baris ke-2 (mengabaikan header)
-  for (var i = 1; i < dataSantri.length; i++) {
-    // Bersihkan NIS dari tanda petik (misal '001 menjadi 001)
-    var nisBaris = dataSantri[i][0].toString().replace(/'/g, "").trim(); 
-
-    // Jika NIS di baris ini ada di dalam daftar centangan
-    if (nisList.indexOf(nisBaris) !== -1) {
-      // Update kolom Kelas. Sesuai database Akang, Kelas ada di Kolom E (ke-5)
-      sheetSantri.getRange(i + 1, 5).setValue(kelasTujuan);
-      jumlahDiupdate++;
-    }
+  // 1. Terapkan LockService (Lampu Lalu Lintas)
+  // Mencegah data bentrok jika ada 2 admin melakukan mutasi di detik yang sama
+  var lock = LockService.getScriptLock();
+  
+  // Tunggu maksimal 10 detik. Jika masih ada proses lain, tolak dengan halus.
+  if (!lock.tryLock(10000)) {
+    return responError('Sistem sedang sibuk memproses data lain. Silakan coba beberapa saat lagi.');
   }
 
-  return responSukses({
-    message: jumlahDiupdate + ' santri berhasil dimutasi ke ' + kelasTujuan
-  });
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var kelasTujuan = e.parameter.kelas_tujuan;
+    var nisList = JSON.parse(e.parameter.nis_list);
+
+    var sheetSantri = ss.getSheetByName('SANTRI');
+    var lastRow = sheetSantri.getLastRow();
+    
+    // Cegah error jika sheet hanya berisi header
+    if (lastRow < 2) {
+      return responError('Tidak ada data santri untuk dimutasi.');
+    }
+
+    // 2. Tarik hanya kolom yang dibutuhkan (Kolom 1: NIS, Kolom 5: Kelas) ke dalam memori
+    // Membaca area spesifik jauh lebih ringan daripada getDataRange() untuk 1000 baris
+    var dataNis = sheetSantri.getRange(2, 1, lastRow - 1, 1).getValues();
+    var dataKelas = sheetSantri.getRange(2, 5, lastRow - 1, 1).getValues();
+    
+    var jumlahDiupdate = 0;
+
+    // 3. Proses pencocokan di dalam memori lokal (Sangat Cepat)
+    for (var i = 0; i < dataNis.length; i++) {
+      var nisBaris = dataNis[i][0].toString().replace(/'/g, "").trim();
+
+      // Jika NIS di baris ini ada di dalam daftar centangan admin
+      if (nisList.indexOf(nisBaris) !== -1) {
+        dataKelas[i][0] = kelasTujuan; // Ubah data di dalam memori array
+        jumlahDiupdate++;
+      }
+    }
+
+    // 4. BATCH PROCESSING: Tulis kembali seluruh perubahan ke Sheet dalam 1X Perintah
+    if (jumlahDiupdate > 0) {
+      sheetSantri.getRange(2, 5, dataKelas.length, 1).setValues(dataKelas);
+    }
+
+    return responSukses({
+      message: jumlahDiupdate + ' santri berhasil dimutasi ke ' + kelasTujuan
+    });
+
+  } catch (error) {
+    return responError('Terjadi kesalahan sistem: ' + error.message);
+  } finally {
+    // 5. Wajib lepaskan kunci agar admin lain bisa menggunakan sistem kembali
+    lock.releaseLock();
+  }
 }
 
 
 // =================================================================
-// 5. FUNGSI SIMPAN BUKU NILAI MASSAL (BULK INPUT)
+// 5. FUNGSI SIMPAN BUKU NILAI MASSAL (OPTIMASI BATCH & LOCK)
 // =================================================================
 function simpanDataNilai(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var kelasPilih = e.parameter.kelas;
-  var listNilai = JSON.parse(e.parameter.list_nilai);
-  var sheetName = 'NILAI ' + kelasPilih;
-  var sheet = ss.getSheetByName(sheetName);
+  // 1. Lampu Lalu Lintas: Antre maksimal 15 detik jika ada guru lain yang sedang menyimpan
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return responError('Server sedang sibuk memproses nilai dari guru lain. Silakan coba klik simpan lagi dalam beberapa detik.');
+  }
 
-  if (kelasPilih.includes('TK')) {
-    var hari = e.parameter.hari;
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
-      sheet.appendRow(['NIS', 'Nama Lengkap', 'Kelas', 'Hari', 'Total Nilai', 'Rata-rata', 'Mapel 1', 'Nilai 1', 'Mapel 2', 'Nilai 2']);
-      sheet.getRange(1, 1, 1, 12).setFontWeight("bold").setBackground("#d1fae5");
-    }
-    var dataTK = sheet.getDataRange().getValues();
-    for (var n = 0; n < listNilai.length; n++) {
-      for (var i = 1; i < dataTK.length; i++) {
-        if (dataTK[i][0].toString() === listNilai[n].nis.toString() && dataTK[i][3].toString() === hari.toString()) {
-          return responError('GAGAL: Santri bernama ' + listNilai[n].nama + ' sudah pernah dinilai di hari ' + hari);
-        }
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var kelasPilih = e.parameter.kelas;
+    var listNilai = JSON.parse(e.parameter.list_nilai);
+    var sheetName = 'NILAI ' + kelasPilih;
+    var sheet = ss.getSheetByName(sheetName);
+
+    // ==========================================
+    // LOGIKA KHUSUS TK / RA
+    // ==========================================
+    if (kelasPilih.includes('TK')) {
+      var hari = e.parameter.hari;
+      if (!sheet) {
+        sheet = ss.insertSheet(sheetName);
+        sheet.appendRow(['NIS', 'Nama Lengkap', 'Kelas', 'Hari', 'Total Nilai', 'Rata-rata', 'Mapel 1', 'Nilai 1', 'Mapel 2', 'Nilai 2']);
+        sheet.getRange(1, 1, 1, 10).setFontWeight("bold").setBackground("#d1fae5");
       }
-    }
-    for (var n = 0; n < listNilai.length; n++) {
-     for (var n = 0; n < listNilai.length; n++) {
-  sheet.appendRow(["'" + listNilai[n].nis, listNilai[n].nama, kelasPilih, hari, listNilai[n].total, listNilai[n].rata, listNilai[n].m1, listNilai[n].n1, listNilai[n].m2, listNilai[n].n2]);
-}
-    }
-    return responSukses({ message: 'Nilai TK berhasil disimpan.' });
-  } else {
-    var mapel = e.parameter.mapel;
-    var semuaMapel = JSON.parse(e.parameter.semua_mapel);
-    var headersBase = ['NIS', 'Nama Lengkap', 'Kelas', 'Total Nilai', 'Rata-rata'];
-    var fullHeaders = headersBase.concat(semuaMapel);
-    if (!sheet) {
-      sheet = ss.insertSheet(sheetName);
-      sheet.appendRow(fullHeaders);
-      sheet.getRange(1, 1, 1, fullHeaders.length).setFontWeight("bold").setBackground("#d1fae5");
-    }
-    var data = sheet.getDataRange().getValues();
-    var sheetHeaders = data[0];
-    var colIndex = sheetHeaders.indexOf(mapel);
-    
-    for (var n = 0; n < listNilai.length; n++) {
-      var student = listNilai[n];
-      var existingRowIndex = -1;
-      for (var i = 1; i < data.length; i++) {
-        if (data[i][0].toString() === student.nis.toString()) { existingRowIndex = i + 1; break; }
-      }
+
+      var dataTK = sheet.getDataRange().getValues();
       
-    if (existingRowIndex > -1) {
-        sheet.getRange(existingRowIndex, colIndex + 1).setValue(student.nilai);
-        var currentRowData = sheet.getRange(existingRowIndex, 1, 1, sheetHeaders.length).getValues()[0];
-        var total = 0; 
-        var totalMapel = sheetHeaders.length - 5;
-        
-        for (var h = 5; h < sheetHeaders.length; h++) {
-          var val = currentRowData[h];
-          if (val !== "" && !isNaN(val)) { total += parseFloat(val); }
+      // Validasi Anti-Duplikat di Memori (Cepat)
+      for (var n = 0; n < listNilai.length; n++) {
+        for (var i = 1; i < dataTK.length; i++) {
+          if (dataTK[i][0].toString() === listNilai[n].nis.toString() && dataTK[i][3].toString() === hari.toString()) {
+            return responError('GAGAL: Santri bernama ' + listNilai[n].nama + ' sudah pernah dinilai di hari ' + hari);
+          }
         }
-        var rata = totalMapel > 0 ? (total / totalMapel).toFixed(1) : 0;
-        
-        sheet.getRange(existingRowIndex, 4).setValue(total);
-        sheet.getRange(existingRowIndex, 5).setValue(rata);
-      } else {
-        var totalMapel = sheetHeaders.length - 5;
-        var rataAwal = totalMapel > 0 ? (parseFloat(student.nilai) / totalMapel).toFixed(1) : student.nilai;
-        var newRow = ["'" + student.nis, student.nama, kelasPilih, student.nilai, rataAwal];
-        for (var h = 5; h < sheetHeaders.length; h++) {
-          if (sheetHeaders[h] === mapel) newRow.push(student.nilai);
-          else newRow.push("");
-        }
-        sheet.appendRow(newRow);
-        data = sheet.getDataRange().getValues();
       }
+
+      // Siapkan Array untuk Batch Insert
+      var barisBaruTK = [];
+      for (var n = 0; n < listNilai.length; n++) {
+        barisBaruTK.push([
+          "'" + listNilai[n].nis, listNilai[n].nama, kelasPilih, hari, 
+          listNilai[n].total, listNilai[n].rata, 
+          listNilai[n].m1, listNilai[n].n1, 
+          listNilai[n].m2, listNilai[n].n2
+        ]);
+      }
+
+      // Tulis Sekaligus ke Database
+      if (barisBaruTK.length > 0) {
+        sheet.getRange(sheet.getLastRow() + 1, 1, barisBaruTK.length, barisBaruTK[0].length).setValues(barisBaruTK);
+      }
+      return responSukses({ message: 'Nilai TK berhasil disimpan secara massal.' });
+    } 
+    
+    // ==========================================
+    // LOGIKA IBTIDAIYAH, SANAWIYAH, ALIYAH
+    // ==========================================
+    else {
+      var mapel = e.parameter.mapel;
+      var semuaMapel = JSON.parse(e.parameter.semua_mapel);
+      var headersBase = ['NIS', 'Nama Lengkap', 'Kelas', 'Total Nilai', 'Rata-rata'];
+      var fullHeaders = headersBase.concat(semuaMapel);
+      
+      if (!sheet) {
+        sheet = ss.insertSheet(sheetName);
+        sheet.appendRow(fullHeaders);
+        sheet.getRange(1, 1, 1, fullHeaders.length).setFontWeight("bold").setBackground("#d1fae5");
+      }
+
+      var data = sheet.getDataRange().getValues();
+      var sheetHeaders = data[0];
+      var colIndex = sheetHeaders.indexOf(mapel);
+      
+      // Petakan index baris berdasarkan NIS agar pencarian O(1) sangat cepat
+      var mapExisting = {};
+      for (var i = 1; i < data.length; i++) {
+        var nisData = data[i][0].toString().replace(/'/g, "").trim();
+        mapExisting[nisData] = i; 
+      }
+
+      var barisBaru = [];
+
+      // Kalkulasi seluruh nilai di dalam Memori
+      for (var n = 0; n < listNilai.length; n++) {
+        var student = listNilai[n];
+        var nisStudent = student.nis.toString().replace(/'/g, "").trim();
+        var existingIndex = mapExisting[nisStudent];
+
+        if (existingIndex !== undefined) {
+          // UPDATE DATA LAMA DI MEMORI
+          data[existingIndex][colIndex] = student.nilai;
+
+          // Hitung ulang total dan rata-rata secara langsung
+          var total = 0; 
+          var totalMapel = sheetHeaders.length - 5;
+          for (var h = 5; h < sheetHeaders.length; h++) {
+            var val = data[existingIndex][h];
+            if (val !== "" && !isNaN(val)) { total += parseFloat(val); }
+          }
+          var rata = totalMapel > 0 ? (total / totalMapel).toFixed(1) : 0;
+
+          data[existingIndex][3] = total; // Index 3: Total Kolom
+          data[existingIndex][4] = rata;  // Index 4: Rata-rata Kolom
+
+        } else {
+          // JIKA ADA SANTRI BARU SUSULAN (Belum ada di sheet)
+          var totalMapel = sheetHeaders.length - 5;
+          var rataAwal = totalMapel > 0 ? (parseFloat(student.nilai) / totalMapel).toFixed(1) : student.nilai;
+          var newRow = ["'" + student.nis, student.nama, kelasPilih, student.nilai, rataAwal];
+          
+          for (var h = 5; h < sheetHeaders.length; h++) {
+            if (sheetHeaders[h] === mapel) newRow.push(student.nilai);
+            else newRow.push("");
+          }
+          barisBaru.push(newRow);
+        }
+      }
+
+      // Tulis Ulang Semua Perubahan Sekaligus (Batch Update)
+      if (data.length > 1) {
+        sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+      }
+
+      // Tambahkan Baris Baru Sekaligus (Batch Insert)
+      if (barisBaru.length > 0) {
+        sheet.getRange(sheet.getLastRow() + 1, 1, barisBaru.length, barisBaru[0].length).setValues(barisBaru);
+      }
+
+      return responSukses({ message: 'Nilai mata pelajaran berhasil diproses!' });
     }
-    return responSukses({ message: 'Nilai mapel berhasil dimasukkan.' });
+  } catch (err) {
+    return responError('Gagal memproses nilai: ' + err.message);
+  } finally {
+    // 2. Wajib melepaskan sistem antrean agar tidak macet
+    lock.releaseLock(); 
   }
 }
 
@@ -1119,43 +1209,109 @@ function getSppData(e) {
   return responSukses({ data: result });
 }
 
+
+// =================================================================
+// FUNGSI SPP (SIMPAN & UPDATE) - OPTIMASI BATCH & ANTI-TABRAKAN
+// =================================================================
 function saveSppData(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('SPP');
-  
-  if (!sheet) {
-    sheet = ss.insertSheet('SPP');
-    sheet.appendRow(['NIS', 'Nama Lengkap', 'Kelas', 'Keterangan Pembayaran', 'Nominal Bayar', 'Status']);
-    sheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#d1fae5");
+  // 1. Lampu Lalu Lintas untuk Keuangan (Wajib Antre)
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return responError('Sistem keuangan sedang digunakan admin lain. Silakan coba lagi.');
   }
-  
-  var nis = e.parameter.nis;
-  var nama = e.parameter.nama;
-  var kelas = e.parameter.kelas;
-  var keterangan = e.parameter.keterangan;
-  var nominal = e.parameter.nominal; 
-  var status = e.parameter.status;
-  
-  var data = sheet.getDataRange().getValues();
-  var isUpdated = false;
-  
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] == nis && data[i][3] == keterangan) {
-      sheet.getRange(i + 1, 5).setValue(nominal); 
-      sheet.getRange(i + 1, 6).setValue(status);  
-      isUpdated = true;
-      break;
+
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('SPP');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('SPP');
+      sheet.appendRow(['NIS', 'Nama Lengkap', 'Kelas', 'Keterangan Pembayaran', 'Nominal Bayar', 'Status']);
+      sheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#d1fae5");
     }
+    
+    var nis = e.parameter.nis;
+    var nama = e.parameter.nama;
+    var kelas = e.parameter.kelas;
+    var keterangan = e.parameter.keterangan;
+    var nominal = e.parameter.nominal; 
+    var status = e.parameter.status;
+    
+    var data = sheet.getDataRange().getValues();
+    var isUpdated = false;
+    
+    // 2. Cek dan Update di dalam Memori Array
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] == nis && data[i][3] == keterangan) {
+        data[i][4] = nominal; 
+        data[i][5] = status;  
+        isUpdated = true;
+        break;
+      }
+    }
+    
+    // 3. Eksekusi Penulisan (Tulis sekaligus jika ada update, atau tambah baris jika baru)
+    if (isUpdated) {
+      sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+    } else {
+      sheet.appendRow(["'" + nis, nama, kelas, "'" + keterangan, nominal, status]);
+    }
+    
+    return responSukses({ message: 'Data transaksi SPP berhasil disimpan!' });
+
+  } catch (err) {
+    return responError('Gagal menyimpan SPP: ' + err.message);
+  } finally {
+    // 4. Buka kembali gembok antrean
+    lock.releaseLock();
   }
-  
-  if (!isUpdated) {
-    // KUNCI PERBAIKAN: Tambahkan "'" sebelum keterangan agar selalu dibaca sebagai teks biasa
-    sheet.appendRow(["'" + nis, nama, kelas, "'" + keterangan, nominal, status]);
-  }
-  
-  return responSukses({ message: 'Data SPP berhasil disimpan!' });
 }
 
+// =================================================================
+// FUNGSI BUKU KAS & PENGELUARAN - KEAMANAN SALDO MINUS
+// =================================================================
+function addPengeluaran(e) {
+  // 1. Lampu Lalu Lintas Pengeluaran Kas
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return responError('Sistem Kas sedang sibuk. Silakan coba lagi.');
+  }
+
+  try {
+    var nominalReq = parseFloat(e.parameter.nominal) || 0;
+    
+    // 2. Cek saldo SECARA LANGSUNG di dalam gembok pengaman
+    // Ini memastikan bahwa jika ada 2 admin, admin kedua akan melihat saldo 
+    // setelah dipotong oleh admin pertama.
+    var dataKas = JSON.parse(getBukuKas().getContent());
+    if (nominalReq > dataKas.saldo) {
+       return responError("Transaksi ditolak! Saldo riil saat ini hanya tersisa Rp " + dataKas.saldo);
+    }
+    
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('PENGELUARAN');
+    
+    if (!sheet) {
+      sheet = ss.insertSheet('PENGELUARAN');
+      sheet.appendRow(['Tanggal', 'Keterangan Pengeluaran', 'Nominal Keluar', 'Diinput Oleh', 'Waktu Sistem']);
+      sheet.getRange(1, 1, 1, 5).setFontWeight("bold").setBackground("#fca5a5");
+    }
+    
+    var tgl = e.parameter.tanggal;
+    var ket = e.parameter.keterangan;
+    var usr = e.parameter.user;
+    var wkt = Utilities.formatDate(new Date(), "GMT+7", "dd/MM/yyyy HH:mm:ss");
+    
+    sheet.appendRow(["'" + tgl, ket, nominalReq, usr, wkt]);
+    
+    return responSukses({ message: "Pengeluaran sukses dicatat." });
+    
+  } catch (err) {
+    return responError("Gagal memproses kas: " + err.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
 
 
 function deleteSppData(e) {

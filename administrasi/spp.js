@@ -197,9 +197,14 @@ function getAngkaMurni(stringInput) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('info_spp_bulan').innerText = formatRp(TARIF_SPP_BULAN) + ' / bln';
-    document.getElementById('info_spp_jml_bulan').innerText = JUMLAH_BULAN_SPP + ' Bulan';
-    document.getElementById('info_spp_total').innerText = formatRp(TOTAL_TAGIHAN_SETAHUN);
+    // Gunakan pengecekan (opsional) agar tidak error jika ID dihapus dari HTML
+    const elBulan = document.getElementById('info_spp_bulan');
+    const elJmlBulan = document.getElementById('info_spp_jml_bulan');
+    const elTotal = document.getElementById('info_spp_total');
+
+    if (elBulan) elBulan.innerText = formatRp(TARIF_SPP_BULAN) + ' / bln';
+    if (elJmlBulan) elJmlBulan.innerText = JUMLAH_BULAN_SPP + ' Bulan';
+    if (elTotal) elTotal.innerText = formatRp(TOTAL_TAGIHAN_SETAHUN);
 });
 
 function ambilSettingSpp() {
@@ -262,6 +267,13 @@ function simpanSettingSpp() {
         showLoading(false); 
         Swal.fire('Error', 'Gagal menyimpan ke server.', 'error');
     });
+}
+
+
+function clearSettingSpp() {
+    document.getElementById('input_tarif_spp').value = "";
+    document.getElementById('input_bulan_spp').value = "";
+    document.getElementById('info_spp_total').innerText = "Rp 0";
 }
 
 // =========================================================
@@ -657,55 +669,6 @@ document.getElementById('formPengeluaran').addEventListener('submit', function(e
     });
 });
 
-document.getElementById('formPengeluaran').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const nominalKeluar = getAngkaMurni(document.getElementById('out_nominal').value);
-    
-    if (nominalKeluar > SALDO_SAAT_INI) {
-        return Swal.fire({
-            icon: 'error',
-            title: 'Saldo Tidak Cukup!',
-            html: `Anda mencoba mengeluarkan <b>${formatRp(nominalKeluar)}</b>, <br>sedangkan saldo saat ini hanya <b>${formatRp(SALDO_SAAT_INI)}</b>.`
-        });
-    }
-
-    if (nominalKeluar <= 0) return Swal.fire('Perhatian', 'Nominal tidak valid', 'warning');
-
-    const btnSubmit = this.querySelector('button[type="submit"]');
-    const teksAsli = btnSubmit.innerHTML;
-    btnSubmit.disabled = true; 
-    btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Memproses...';
-
-    const tanggal = document.getElementById('out_tanggal').value;
-    const keterangan = document.getElementById('out_keterangan').value;
-    
-    showLoading(true, "Mencatat Pengeluaran...");
-
-    const fd = new URLSearchParams();
-    fd.append('action', 'addPengeluaran');
-    fd.append('token', sessionStorage.getItem('tokenMadasa'));
-    fd.append('tanggal', tanggal);
-    fd.append('keterangan', keterangan);
-    fd.append('nominal', nominalKeluar);
-    fd.append('user', sessionStorage.getItem('namaMadasa') || 'Admin');
-
-    fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
-        showLoading(false);
-        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
-        
-        if (res.status === 'success') {
-            closeModalPengeluaran();
-            Swal.fire({toast:true, position:'top-end', icon:'success', title:'Pengeluaran dicatat!', showConfirmButton:false, timer:2000});
-            loadBukuKas(); 
-        } else {
-            Swal.fire('Gagal', res.message, 'error');
-        }
-    }).catch(e => {
-        showLoading(false);
-        btnSubmit.disabled = false; btnSubmit.innerHTML = teksAsli;
-        Swal.fire('Error', 'Koneksi gagal.', 'error');
-    });
-});
 
 // =========================================================
 // MODAL LAPORAN BUKU KAS (MASUK & KELUAR)
@@ -735,14 +698,23 @@ function tarikLaporanKas() {
                 let warnaJenis = item.jenis === 'Masuk' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
                 let strMasuk = item.masuk > 0 ? formatRp(item.masuk) : '-';
                 let strKeluar = item.keluar > 0 ? formatRp(item.keluar) : '-';
+                
+           
+            // --- KODE TOMBOL (HANYA SISA HAPUS) ---
+                let tombolAksi = `
+                    <div class="flex items-center justify-center">
+                        <button onclick="hapusKas('${item.rincian}', '${item.jenis}')" title="Hapus" class="w-8 h-8 rounded bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-sm"><i class="fas fa-trash"></i></button>
+                    </div>
+                `;
 
                 tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50 transition-all">
+                    <tr class="hover:bg-gray-50 transition-all border-b border-gray-50">
                         <td class="p-3 text-center text-gray-500">${nomor++}</td>
                         <td class="p-3 font-semibold text-gray-700 text-xs sm:text-sm whitespace-normal min-w-[200px]">${item.rincian}</td>
                         <td class="p-3 text-center"><span class="px-2 py-1 rounded text-[10px] font-bold ${warnaJenis}">${item.jenis}</span></td>
                         <td class="p-3 text-right font-bold text-emerald-600">${strMasuk}</td>
                         <td class="p-3 text-right font-bold text-red-500">${strKeluar}</td>
+                        <td class="p-3 text-center">${tombolAksi}</td> <!-- KOLOM AKSI DIMASUKKAN -->
                     </tr>
                 `;
             });
@@ -750,7 +722,7 @@ function tarikLaporanKas() {
             document.getElementById('lap_tot_keluar').innerText = formatRp(res.keluar);
             document.getElementById('lap_tot_saldo').innerText = formatRp(res.masuk - res.keluar);
         } else {
-            tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-red-400 font-medium">Tidak ada transaksi yang cocok.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-red-400 font-medium">Tidak ada transaksi yang cocok.</td></tr>';
             document.getElementById('lap_tot_masuk').innerText = "Rp 0";
             document.getElementById('lap_tot_keluar').innerText = "Rp 0";
             document.getElementById('lap_tot_saldo').innerText = "Rp 0";
@@ -878,3 +850,47 @@ window.addEventListener('popstate', function(event) {
 
     if (isModalClosed) return;
 });
+
+
+// =========================================================
+// LOGIKA HAPUS & EDIT TRANSAKSI DARI BUKU KAS
+// =========================================================
+
+function hapusKas(rincian, jenis) {
+    Swal.fire({
+        title: 'Hapus Transaksi?',
+        text: `Anda yakin ingin menghapus catatan ${jenis} ini? Saldo akan disesuaikan otomatis.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Ya, Hapus!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            showLoading(true, "Menghapus...");
+            const fd = new URLSearchParams();
+            fd.append('action', 'deleteKas'); 
+            fd.append('token', sessionStorage.getItem('tokenMadasa'));
+            fd.append('rincian', rincian);
+            fd.append('jenis', jenis);
+
+            fetch(GAS_URL, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(res => {
+                showLoading(false);
+                if(res.status === 'success') {
+                    Swal.fire({toast: true, position: 'top-end', icon: 'success', title: 'Data berhasil dihapus!', showConfirmButton: false, timer: 1500});
+                    tarikLaporanKas(); // Refresh tabel Buku Kas
+                    loadBukuKas(); // Refresh jumlah Saldo di atas
+                    if(jenis === 'Masuk') loadDataSpp(); // Refresh tabel SPP jika itu pemasukan
+                } else {
+                    Swal.fire('Gagal', res.message, 'error');
+                }
+            }).catch(e => {
+                showLoading(false);
+                Swal.fire('Error', 'Koneksi gagal ke server.', 'error');
+            });
+        }
+    });
+}
+

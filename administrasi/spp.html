@@ -311,9 +311,13 @@
                 </div>
             </div>
 
-            <!-- Tabel Rekap Buku Kas -->
+
+<!-- Tabel Rekap Buku Kas -->
+
             <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm" id="areaTabelKas">
                 <table class="w-full text-left text-sm whitespace-nowrap">
+                    
+                    <!-- 1. HEADER TABEL (Menambahkan tulisan AKSI) -->
                     <thead class="bg-gray-100 text-gray-700 text-xs uppercase border-b border-gray-200">
                         <tr>
                             <th class="p-3 text-center w-10">No</th>
@@ -321,22 +325,29 @@
                             <th class="p-3 text-center">Jenis</th>
                             <th class="p-3 text-right">Pemasukan</th>
                             <th class="p-3 text-right">Pengeluaran</th>
+                            <th class="p-3 text-center w-24">Aksi</th> <!-- Tulisan AKSI ditambahkan di sini -->
                         </tr>
                     </thead>
+                    
                     <tbody id="bodyLaporanKas" class="divide-y divide-gray-100">
-                        <tr><td colspan="5" class="p-6 text-center text-gray-400">Silakan klik tombol cari untuk memuat data.</td></tr>
+                        <tr><td colspan="6" class="p-6 text-center text-gray-400">Silakan klik tombol cari untuk memuat data.</td></tr>
                     </tbody>
+                    
+                    <!-- 2. FOOTER TABEL (Menyeimbangkan jumlah kolom agar warna tidak terpotong) -->
                     <tfoot class="bg-gray-50 border-t-2 border-gray-200">
                         <tr>
                             <td colspan="3" class="p-3 text-right font-bold text-gray-800">TOTAL PERIODE INI :</td>
                             <td class="p-3 text-right font-bold text-emerald-600" id="lap_tot_masuk">Rp 0</td>
                             <td class="p-3 text-right font-bold text-red-600" id="lap_tot_keluar">Rp 0</td>
+                            <td></td> <!-- Sel kosong penyeimbang kolom aksi -->
                         </tr>
                         <tr class="bg-emerald-50 border-t border-emerald-200">
                             <td colspan="3" class="p-3 text-right font-bold text-emerald-900">SALDO BERSIH :</td>
                             <td colspan="2" class="p-3 text-right font-bold text-emerald-700 text-base" id="lap_tot_saldo">Rp 0</td>
+                            <td></td> <!-- Sel kosong penyeimbang agar blok warna hijau penuh sampai ujung -->
                         </tr>
                     </tfoot>
+
                 </table>
             </div>
 
