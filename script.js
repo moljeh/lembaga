@@ -212,18 +212,27 @@ window.addEventListener('popstate', function(event) {
     
     let isModalClosed = false;
 
-    if (modalTambah && !modalTambah.classList.contains('hidden')) { 
-        modalTambah.classList.add('hidden'); 
-        const form = document.getElementById('formTambahSantri');
-        if(form) form.reset();
-        isModalClosed = true; 
+if (modalTambah && !modalTambah.classList.contains('hidden')) { 
+    modalTambah.classList.add('hidden'); 
+    const form = document.getElementById('formTambahSantri');
+    if(form) {
+        form.reset();
+        // TAMBAHKAN BARIS INI:
+        document.getElementById('text_add_kelas').innerText = 'Pilih...'; // Added successfully
     }
-    if (modalEdit && !modalEdit.classList.contains('hidden')) { 
-        modalEdit.classList.add('hidden'); 
-        const form = document.getElementById('formEditSantri');
-        if(form) form.reset();
-        isModalClosed = true; 
+    isModalClosed = true; 
+}
+if (modalEdit && !modalEdit.classList.contains('hidden')) { 
+    modalEdit.classList.add('hidden'); 
+    const form = document.getElementById('formEditSantri');
+    if(form) {
+        form.reset();
+        // TAMBAHKAN BARIS INI:
+        document.getElementById('text_edit_kelas').innerText = 'Pilih...'; // Added successfully
     }
+    isModalClosed = true; 
+}
+
     if (modalImport && !modalImport.classList.contains('hidden')) { 
         modalImport.classList.add('hidden'); 
         const form = document.getElementById('formImportSantri');
@@ -553,6 +562,9 @@ function closeModalSantri() {
     } else {
         document.getElementById('modalTambahSantri').classList.add('hidden'); 
         document.getElementById('formTambahSantri').reset(); 
+        
+        // TAMBAHKAN BARIS INI:
+        if(document.getElementById('text_add_kelas')) document.getElementById('text_add_kelas').innerText = 'Pilih...';
     }
 }
 
@@ -566,12 +578,13 @@ function closeModalImportSantri() {
 }
 
 function closeModalEditSantri() { 
-    if (window.location.hash === "#modalEdit") {
-        window.history.back(); 
-    } else {
-        document.getElementById('modalEditSantri').classList.add('hidden'); 
-        document.getElementById('formEditSantri').reset(); 
-    }
+    document.getElementById('modalEditSantri').classList.add('hidden'); 
+    document.getElementById('formEditSantri').reset(); 
+    
+    // TAMBAHKAN BARIS INI:
+    if(document.getElementById('text_edit_kelas')) document.getElementById('text_edit_kelas').innerText = 'Pilih...';
+    
+    if (window.location.hash === "#modalEdit") window.history.back(); 
 }
 
 function closeModalEditNilai() { 
@@ -704,6 +717,7 @@ function openModalEditSantri(nis, nama, jk, kelas, alamat, ayah, ibu, hp, ttl) {
     document.getElementById('edit_nama').value = nama; 
     document.getElementById('edit_jk').value = jk; 
     document.getElementById('edit_kelas').value = kelas; 
+	document.getElementById('text_edit_kelas').innerText = kelas;
     document.getElementById('edit_alamat').value = alamat; 
     document.getElementById('edit_ayah').value = ayah; 
     document.getElementById('edit_ibu').value = ibu; 
@@ -837,10 +851,18 @@ function loadDataSantri(silent = false) {
 
 document.getElementById('formTambahSantri').addEventListener('submit', function(e) { 
     e.preventDefault(); 
+    
+    // --- TAMBAHAN KODE VALIDASI KELAS ---
+const cekKelas = document.getElementById('edit_kelas').value;
+if (!cekKelas || cekKelas === "") {
+    Swal.fire('Perhatian', 'Silakan pilih Penempatan Kelas terlebih dahulu!', 'warning');
+    return; // Hentikan proses jika kelas kosong
+}
+
     const btnSubmit = this.querySelector('button[type="submit"]'); 
     const originalText = btnSubmit.innerHTML; 
     btnSubmit.disabled = true; btnSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menyimpan...'; 
-    showLoading(true); 
+    showLoading(true);
     
   const formData = new URLSearchParams();
 formData.append('action', 'addSantri');
@@ -870,8 +892,16 @@ formData.append('ttl', `${tempatTambah}, ${tglTambah}`);
 document.getElementById('formEditSantri').addEventListener('submit', function(e) { 
     e.preventDefault(); 
     
+    // --- TAMBAHAN KODE VALIDASI KELAS ---
+    const cekKelas = document.getElementById('edit_kelas').value;
+    if (!cekKelas || cekKelas === "") {
+        Swal.fire('Perhatian', 'Silakan pilih Penempatan Kelas terlebih dahulu!', 'warning');
+        return; // Hentikan proses jika kelas kosong
+    }
+    // ------------------------------------
+
     // 1. Tangkap semua tombol yang ada di Modal Edit
-    const btnSubmit = this.querySelector('button[type="submit"]'); 
+    const btnSubmit = this.querySelector('button[type="submit"]');
     const btnBatal = this.querySelector('button[type="button"]'); 
     const btnClose = document.querySelector('#modalEditSantri button[onclick="closeModalEditSantri()"]');
     
@@ -1110,11 +1140,15 @@ if (kelasPilih.includes('TK')) {
         btnSubmit.classList.remove('pointer-events-none', 'opacity-70');
         btnSubmit.innerHTML = originalText; 
         
-        if(data.status === 'success') { 
-            Swal.fire({ icon: 'success', title: 'Sukses!', text: data.message, confirmButtonColor: '#059669' }); 
-            document.getElementById('formInputNilaiBulk').classList.add('hidden'); 
-            document.getElementById('pilihKelasNilai').value = ""; 
-            document.getElementById('wadahFilterKedua').classList.add('hidden'); 
+if(data.status === 'success') { 
+    Swal.fire({ icon: 'success', title: 'Sukses!', text: data.message, confirmButtonColor: '#059669' }); 
+    document.getElementById('formInputNilaiBulk').classList.add('hidden'); 
+    document.getElementById('pilihKelasNilai').value = ""; 
+
+    // TAMBAHKAN BARIS INI:
+    document.getElementById('text_pilihKelasNilai').innerText = '-- Silakan Pilih Kelas Dulu --'; // Added successfully
+            
+            document.getElementById('wadahFilterKedua').classList.add('hidden');
            if(kelasPilih.includes('TK')) { 
     document.getElementById('global_tk_m1').value = ""; 
     document.getElementById('global_tk_m2').value = ""; 
@@ -2228,11 +2262,17 @@ function prosesMutasi() {
             fetch(GAS_URL, { method: 'POST', body: formData })
             .then(r => r.json())
             .then(res => {
-                if (res.status === 'success') {
-                    showLoading(false); 
-                    Swal.fire('Berhasil!', res.message, 'success');
-                    document.getElementById('mutasiKelasAsal').value = '';
-                    document.getElementById('mutasiKelasTujuan').value = '';
+if (res.status === 'success') {
+    showLoading(false); 
+    Swal.fire('Berhasil!', res.message, 'success');
+
+    document.getElementById('mutasiKelasAsal').value = '';
+    // TAMBAHKAN BARIS INI:
+    document.getElementById('text_mutasiKelasAsal').innerText = '-- Pilih Kelas Asal --'; // Added successfully
+
+    document.getElementById('mutasiKelasTujuan').value = '';
+    // TAMBAHKAN BARIS INI:
+    document.getElementById('text_mutasiKelasTujuan').innerText = '-- Pilih Tujuan --'; // Added successfully
                     document.getElementById('bodyTabelMutasi').innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400"><i class="fas fa-check-circle text-4xl mb-2 text-emerald-400 block"></i>Mutasi selesai.</td></tr>';
                     
                     // Segarkan ulang data lokal agar sinkron
