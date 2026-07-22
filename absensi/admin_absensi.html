@@ -125,7 +125,7 @@
     </div>
 
 <!-- AREA 1: PENGATURAN -->
-  <div id="areaPengaturan" class="max-w-5xl mx-auto no-print">
+    <div id="areaPengaturan" class="max-w-5xl mx-auto no-print">
         <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-gray-100">
             
             <div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
@@ -136,6 +136,7 @@
                 <span id="badgeStatus" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 shadow-sm border border-gray-200 whitespace-nowrap shrink-0"><i class="fas fa-sync fa-spin mr-1"></i> Memuat...</span>
             </div>
 
+            <!-- KOTAK 1: STATUS -->
             <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100 mb-6">
                 <label class="text-sm font-bold text-gray-700 block mb-1"><i class="fas fa-toggle-on text-emerald-600 mr-2"></i>Status Operasional</label>
                 <p class="text-[11px] text-gray-500 mb-4">Masukkan keterangan jika ingin menutup/meliburkan absensi hari ini.</p>
@@ -152,7 +153,8 @@
                 </div>
             </div>
 
-            <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100">
+            <!-- KOTAK 2: JAM ABSEN -->
+            <div class="bg-blue-50 p-5 rounded-2xl border border-blue-100 mb-6">
                 <label class="text-sm font-bold text-blue-800 block mb-1"><i class="fas fa-clock mr-2"></i>Jam Buka-Tutup Scanner</label>
                 <p class="text-[11px] text-blue-600 mb-4">Gunakan format 24 jam (Misal: 12 untuk jam 12 siang).</p>
                 
@@ -172,8 +174,44 @@
                 </button>
             </div>
             
+            <!-- KOTAK 3: LOKASI GPS -->
+            <div class="bg-amber-50 p-5 rounded-2xl border border-amber-100">
+                <label class="text-sm font-bold text-amber-800 block mb-1"><i class="fas fa-map-marker-alt mr-2"></i>Titik Lokasi Absensi (GPS)</label>
+                <p class="text-[11px] text-amber-600 mb-4">Atur koordinat pusat madrasah dan radius jangkauan (dalam meter) agar santri hanya bisa absen di area madrasah.</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 block mb-1.5">Latitude (Garis Lintang)</label>
+                        <input type="text" id="inputLat" placeholder="-7.xxxxx" class="w-full p-3 border border-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm font-medium text-gray-800">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-600 block mb-1.5">Longitude (Garis Bujur)</label>
+                        <input type="text" id="inputLng" placeholder="112.xxxxx" class="w-full p-3 border border-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm font-medium text-gray-800">
+                    </div>
+                </div>
+                
+                <div class="mb-5">
+                    <label class="text-xs font-bold text-gray-600 block mb-1.5">Radius Maksimal (Meter)</label>
+                    <input type="number" id="inputRadius" value="50" class="w-full p-3 border border-white rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 bg-white shadow-sm font-bold text-gray-800">
+                </div>
+                
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button onclick="dapatkanLokasiSaatIni()" class="flex-1 flex items-center justify-center px-4 py-3 bg-white border border-amber-300 text-amber-700 rounded-xl hover:bg-amber-100 font-bold text-sm transition-all shadow-sm">
+                        <i class="fas fa-crosshairs mr-2"></i> Lacak Lokasi Saya
+                    </button>
+                    <button onclick="simpanLokasiAbsen()" class="flex-1 flex items-center justify-center px-4 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 font-bold text-sm transition-all shadow-sm">
+                        <i class="fas fa-save mr-2"></i> Simpan Lokasi
+                    </button>
+                    <button onclick="hapusLokasiAbsen()" class="flex items-center justify-center px-4 py-3 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 font-bold text-sm transition-all shadow-sm" title="Hapus Batasan Lokasi">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            
         </div>
     </div>
+	
+	
 
     <!-- AREA 2: ID CARD -->
     <div id="areaCetak" class="max-w-5xl mx-auto hidden">
@@ -536,11 +574,12 @@
             });
         }
 
-        function cekStatusSistemAwal() {
+function cekStatusSistemAwal() {
             const fd = new URLSearchParams();
             fd.append('action', 'getStatusAbsen');
             fd.append('token', sessionStorage.getItem('tokenMadasa'));
 
+            // INI ADALAH BAGIAN YANG KAMU TANYAKAN
             fetch(GAS_URL, { method: 'POST', body: fd }).then(r=>r.json()).then(res => {
                 if (res.status === 'success') {
                     renderBadgeStatus(res.status_absen);
@@ -555,6 +594,10 @@
                         JAM_TUTUP = parseInt(res.jam_tutup);
                         document.getElementById('inputJamTutup').value = JAM_TUTUP;
                     }
+                    // TAMBAHAN PENARIKAN DATA LOKASI GPS
+                    if(res.lat) document.getElementById('inputLat').value = res.lat;
+                    if(res.lng) document.getElementById('inputLng').value = res.lng;
+                    if(res.radius) document.getElementById('inputRadius').value = res.radius;
                 }
             }).catch(e => console.log('Gagal cek status sistem:', e));
         }
@@ -684,6 +727,84 @@
                 setTimeout(() => { document.body.classList.remove('cetak-mode-rekap'); }, 3000); 
             }, 500); 
         }
+		
+		
+		
+		// TAMBAHKAN KODE INI DI BAGIAN BAWAH SCRIPT KAMU
+        
+        // --- LOGIKA LOKASI GPS ---
+        function dapatkanLokasiSaatIni() {
+            if (navigator.geolocation) {
+                showLoading(true, "Mencari koordinat GPS...");
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        showLoading(false);
+                        document.getElementById('inputLat').value = position.coords.latitude;
+                        document.getElementById('inputLng').value = position.coords.longitude;
+                        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Titik koordinat ditemukan!', showConfirmButton: false, timer: 2000 });
+                    },
+                    (error) => {
+                        showLoading(false);
+                        Swal.fire('Gagal', 'Pastikan GPS/Lokasi di perangkat Anda aktif dan diizinkan oleh browser.', 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                Swal.fire('Gagal', 'Browser Anda tidak mendukung fitur lokasi.', 'error');
+            }
+        }
+
+        function simpanLokasiAbsen() {
+            const lat = document.getElementById('inputLat').value;
+            const lng = document.getElementById('inputLng').value;
+            const radius = document.getElementById('inputRadius').value;
+
+            if (!lat || !lng) return Swal.fire('Peringatan', 'Lacak koordinat lokasi terlebih dahulu.', 'warning');
+
+            showLoading(true, "Menyimpan Lokasi...");
+            const fd = new URLSearchParams();
+            fd.append('action', 'simpanLokasiAbsen');
+            fd.append('lat', lat);
+            fd.append('lng', lng);
+            fd.append('radius', radius || 50);
+            fd.append('token', sessionStorage.getItem('tokenMadasa'));
+
+            fetch(GAS_URL, { method: 'POST', body: fd }).then(r => r.json()).then(res => {
+                showLoading(false);
+                if (res.status === 'success') {
+                    Swal.fire('Berhasil', res.message, 'success');
+                } else { Swal.fire('Gagal', res.message, 'error'); }
+            }).catch(e => { showLoading(false); Swal.fire('Error', 'Gagal menyambung ke server.', 'error'); });
+        }
+
+        function hapusLokasiAbsen() {
+            Swal.fire({
+                title: 'Hapus Batasan Lokasi?', text: 'Santri akan bisa absen dari mana saja jika lokasi dihapus (Tanpa Batasan).', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#6b7280', confirmButtonText: 'Ya, Hapus'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    showLoading(true, "Menghapus...");
+                    const fd = new URLSearchParams();
+                    fd.append('action', 'hapusLokasiAbsen');
+                    fd.append('token', sessionStorage.getItem('tokenMadasa'));
+
+                    fetch(GAS_URL, { method: 'POST', body: fd }).then(r => r.json()).then(res => {
+                        showLoading(false);
+                        if (res.status === 'success') {
+                            document.getElementById('inputLat').value = '';
+                            document.getElementById('inputLng').value = '';
+                            Swal.fire('Dihapus', res.message, 'success');
+                        } else { Swal.fire('Gagal', res.message, 'error'); }
+                    }).catch(e => { showLoading(false); Swal.fire('Error', 'Gagal ke server.', 'error'); });
+                }
+            });
+        }
+		
+		
     </script>
+	
+	
+	
+	
+	
 </body>
 </html>
