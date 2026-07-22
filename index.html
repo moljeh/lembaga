@@ -436,9 +436,14 @@
                             </div>
 							
 							
-                        <select id="filterKelasSantri" onchange="filterSantri()" class="w-full sm:w-48 p-3 sm:p-2.5 border border-gray-200 rounded-xl focus:ring-teal-500 outline-none text-sm bg-gray-50 focus:bg-white transition-all font-medium text-gray-700">
-    <option value="Semua">Semua Kelas</option>
-</select>
+<div class="relative w-full sm:w-48 custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('filterKelasSantri')" class="w-full p-3 sm:p-2.5 border border-gray-200 rounded-xl bg-gray-50 hover:bg-white text-sm font-medium text-gray-700 flex justify-between items-center cursor-pointer transition-all shadow-sm">
+        <span id="text_filterKelasSantri" class="truncate">Semua Kelas</span>
+        <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300 ml-2 shrink-0" id="icon_filterKelasSantri"></i>
+    </div>
+    <input type="hidden" id="filterKelasSantri" value="Semua">
+    <ul id="list_filterKelasSantri" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden"></ul>
+</div>
 							
 							
                         </div>
@@ -480,9 +485,14 @@
                             <div>
                                 <label class="block text-xs sm:text-sm font-bold text-teal-800 mb-1.5 sm:mb-2">1. Pilih Kelas</label>
 								
-                              <select id="pilihKelasNilai" onchange="aktifkanFilterKedua()" class="w-full p-3 border border-teal-300 rounded-xl focus:ring-teal-500 focus:border-teal-500 outline-none font-medium bg-white shadow-sm transition-all text-sm sm:text-base">
-    <option value="" disabled selected>-- Silakan Pilih Kelas Dulu --</option>
-</select>
+<div class="relative w-full custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('pilihKelasNilai')" class="w-full p-3 border border-teal-300 rounded-xl bg-white text-sm sm:text-base font-medium text-teal-800 flex justify-between items-center cursor-pointer hover:border-teal-500 transition-all shadow-sm">
+        <span id="text_pilihKelasNilai" class="truncate">-- Silakan Pilih Kelas Dulu --</span>
+        <i class="fas fa-chevron-down text-teal-600 transition-transform duration-300 ml-2 shrink-0" id="icon_pilihKelasNilai"></i>
+    </div>
+    <input type="hidden" id="pilihKelasNilai" value="">
+    <ul id="list_pilihKelasNilai" class="absolute z-50 w-full mt-2 bg-white border border-teal-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden"></ul>
+</div>
 								
                             </div>
                             <div id="wadahFilterKedua" class="hidden">
@@ -585,10 +595,14 @@
                             <label class="block text-sm font-bold text-blue-800 mb-2">Pilih Kelas Laporan:</label>
                             <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
 							
-							
-                          <select id="filterKelasDataNilai" class="w-full sm:flex-1 p-3 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white shadow-sm transition-all text-gray-700 font-medium">
-    <option value="" disabled selected>-- Pilih Kelas Terlebih Dahulu --</option>
-</select>
+<div class="relative w-full sm:flex-1 custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('filterKelasDataNilai')" class="w-full p-3 border border-blue-200 rounded-xl bg-white text-sm font-medium text-gray-700 flex justify-between items-center cursor-pointer hover:border-blue-400 transition-all shadow-sm">
+        <span id="text_filterKelasDataNilai" class="truncate">-- Pilih Kelas Terlebih Dahulu --</span>
+        <i class="fas fa-chevron-down text-blue-500 transition-transform duration-300 ml-2 shrink-0" id="icon_filterKelasDataNilai"></i>
+    </div>
+    <input type="hidden" id="filterKelasDataNilai" value="">
+    <ul id="list_filterKelasDataNilai" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden"></ul>
+</div>
 								
 								
                                 <button onclick="loadDataNilaiKelas()" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all font-bold text-sm shadow-sm flex items-center justify-center gap-2">
@@ -657,9 +671,14 @@
                         </div>
                         <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100 mb-6 flex flex-col sm:flex-row gap-3">
 						
-                  <select id="filterKelasRanking" class="w-full sm:flex-1 p-3 border border-emerald-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-sm bg-white font-medium text-gray-700">
-    <option value="" disabled selected>-- Pilih Kelas Untuk Melihat Ranking --</option>
-</select>
+<div class="relative w-full sm:flex-1 custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('filterKelasRanking')" class="w-full p-3 border border-emerald-200 rounded-xl bg-white text-sm font-medium text-gray-700 flex justify-between items-center cursor-pointer hover:border-emerald-400 transition-all shadow-sm">
+        <span id="text_filterKelasRanking" class="truncate">-- Pilih Kelas Untuk Melihat Ranking --</span>
+        <i class="fas fa-chevron-down text-emerald-600 transition-transform duration-300 ml-2 shrink-0" id="icon_filterKelasRanking"></i>
+    </div>
+    <input type="hidden" id="filterKelasRanking" value="">
+    <ul id="list_filterKelasRanking" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden"></ul>
+</div>
 							
 							
                             <button onclick="loadRankingKelas()" class="w-full sm:w-auto px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all">
@@ -737,9 +756,14 @@
                         <div class="bg-teal-50 p-4 rounded-xl border border-teal-100 mb-6">
                             <label class="block text-sm font-bold text-teal-800 mb-2">Pilih Kelas yang Akan Diatur:</label>
 							
-                 <select id="settingKelas" onchange="loadSettingRapor()" class="w-full p-3 border border-teal-300 rounded-xl font-bold bg-white text-teal-700 outline-none focus:ring-2 focus:ring-teal-500 shadow-sm cursor-pointer">
-    <option value="" disabled selected>-- Pilih Kelas --</option>
-</select>
+<div class="relative w-full custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('settingKelas')" class="w-full p-3 border border-teal-300 rounded-xl bg-white text-sm font-bold text-teal-700 flex justify-between items-center cursor-pointer hover:border-teal-500 transition-all shadow-sm">
+        <span id="text_settingKelas" class="truncate">-- Pilih Kelas --</span>
+        <i class="fas fa-chevron-down text-teal-600 transition-transform duration-300 ml-2 shrink-0" id="icon_settingKelas"></i>
+    </div>
+    <input type="hidden" id="settingKelas" value="">
+    <ul id="list_settingKelas" class="absolute z-50 w-full mt-2 bg-white border border-teal-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden custom-scrollbar"></ul>
+</div>
 							
 							
                         </div>
@@ -877,9 +901,14 @@
                                 <label class="block text-sm font-bold text-indigo-800 mb-2">1. Pilih Kelas Asal:</label>
 								
 								
-                            <select id="mutasiKelasAsal" onchange="loadTabelMutasi()" class="w-full p-3 border border-indigo-300 rounded-xl font-medium bg-white text-gray-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer">
-    <option value="" disabled selected>-- Pilih Kelas Asal --</option>
-</select>
+<div class="relative w-full custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('mutasiKelasAsal')" class="w-full p-3 border border-indigo-300 rounded-xl bg-white text-sm font-medium text-gray-700 flex justify-between items-center cursor-pointer hover:border-indigo-500 transition-all shadow-sm">
+        <span id="text_mutasiKelasAsal" class="truncate">-- Pilih Kelas Asal --</span>
+        <i class="fas fa-chevron-down text-indigo-500 transition-transform duration-300 ml-2 shrink-0" id="icon_mutasiKelasAsal"></i>
+    </div>
+    <input type="hidden" id="mutasiKelasAsal" value="">
+    <ul id="list_mutasiKelasAsal" class="absolute z-50 w-full mt-2 bg-white border border-indigo-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden custom-scrollbar"></ul>
+</div>
 								
 								
                             </div>
@@ -888,12 +917,14 @@
                                 <div class="flex gap-2">
 								
 								
-                          <select id="mutasiKelasTujuan" class="w-full p-3 border border-indigo-300 rounded-xl font-bold bg-white text-indigo-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer">
-    <option value="" disabled selected>-- Pilih Tujuan --</option>
-    <option value="Lulus / Alumni" class="text-green-600 font-bold">🎓 LULUS / ALUMNI</option>
-    <option value="Diberhentikan" class="text-red-600 font-bold">🚫 DIBERHENTIKAN (DO)</option>
-    <option disabled>───────────────</option>
-</select>
+<div class="relative w-full custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('mutasiKelasTujuan')" class="w-full p-3 border border-indigo-300 rounded-xl bg-white text-sm font-bold text-indigo-700 flex justify-between items-center cursor-pointer hover:border-indigo-500 transition-all shadow-sm">
+        <span id="text_mutasiKelasTujuan" class="truncate">-- Pilih Tujuan --</span>
+        <i class="fas fa-chevron-down text-indigo-500 transition-transform duration-300 ml-2 shrink-0" id="icon_mutasiKelasTujuan"></i>
+    </div>
+    <input type="hidden" id="mutasiKelasTujuan" value="">
+    <ul id="list_mutasiKelasTujuan" class="absolute z-50 w-full mt-2 bg-white border border-indigo-200 rounded-xl shadow-xl max-h-64 overflow-y-auto hidden custom-scrollbar"></ul>
+</div>
 									
 									
                                     <button onclick="prosesMutasi()" class="px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition-all whitespace-nowrap"><i class="fas fa-paper-plane mr-2"></i> Proses</button>
@@ -977,9 +1008,14 @@
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Penempatan Kelas</label>
 				
 			<!-- Di Form Tambah Santri -->
-<select id="add_kelas" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-teal-500 outline-none text-sm" required>
-    <option value="" disabled selected>Pilih...</option>
-</select>
+<div class="relative w-full custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('add_kelas')" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl bg-white text-sm font-medium text-gray-700 flex justify-between items-center cursor-pointer hover:border-teal-500 transition-all">
+        <span id="text_add_kelas" class="truncate">Pilih...</span>
+        <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300 ml-2 shrink-0" id="icon_add_kelas"></i>
+    </div>
+    <input type="hidden" id="add_kelas" value="" required>
+    <ul id="list_add_kelas" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto hidden custom-scrollbar"></ul>
+</div>
 				
 				</div>
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">No. HP/WA</label><input type="tel" id="add_hp" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-teal-500 outline-none text-sm" required></div>
@@ -1032,9 +1068,14 @@
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Penempatan Kelas</label>
 				
 			<!-- Di Form Edit Santri -->
-<select id="edit_kelas" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-blue-500 outline-none text-sm" required>
-    <option value="" disabled selected>Pilih...</option>
-</select>
+<div class="relative w-full custom-select-wrapper">
+    <div onclick="toggleCustomSelectGlobal('edit_kelas')" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl bg-white text-sm font-medium text-gray-700 flex justify-between items-center cursor-pointer hover:border-blue-500 transition-all">
+        <span id="text_edit_kelas" class="truncate">Pilih...</span>
+        <i class="fas fa-chevron-down text-gray-400 transition-transform duration-300 ml-2 shrink-0" id="icon_edit_kelas"></i>
+    </div>
+    <input type="hidden" id="edit_kelas" value="" required>
+    <ul id="list_edit_kelas" class="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-48 overflow-y-auto hidden custom-scrollbar"></ul>
+</div>
 				
 				</div>
                 <div><label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">No. HP/WA</label><input type="tel" id="edit_hp" class="w-full p-2.5 sm:p-3 border border-gray-300 rounded-xl focus:ring-blue-500 outline-none text-sm" required></div>

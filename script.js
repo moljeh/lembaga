@@ -2425,100 +2425,122 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 // =========================================================
-// FUNGSI OTO-GENERATE DROPDOWN KELAS OTOMATIS & DINAMIS
+// FUNGSI OTO-GENERATE DROPDOWN KELAS (CUSTOM SELECT GLOBAL)
 // =========================================================
 function buatOpsiSemuaKelasOtomatis() {
-    // 1. Ambil seluruh nama kelas unik dari data santri dan urutkan
     const kelasUnik = [...new Set(GLOBAL_DATA_SANTRI.map(s => s.kelas))].filter(Boolean).sort();
-
-
-   // 2. Kelompokkan secara otomatis dengan menentukan bobot urutan jenjang
     let kelompokKelas = {};
-    let bobotJenjang = {
-        "TK / RA": 1,
-        "IBTIDAIYAH": 2,
-        "SANAWIYAH": 3,
-        "ALIYAH": 4
-    };
+    let bobotJenjang = { "TK / RA": 1, "IBTIDAIYAH": 2, "SANAWIYAH": 3, "ALIYAH": 4 };
     
     kelasUnik.forEach(k => {
         let kUpper = k.toUpperCase();
         let kategori = "LAINNYA";
 
-        if (kUpper.includes('TK') || kUpper.includes('RA')) {
-            kategori = "TK / RA";
-        } else if (kUpper.includes('IBT') || kUpper.includes('IBTIDAIYAH')) {
-            kategori = "IBTIDAIYAH";
-        } else if (kUpper.includes('SANA') || kUpper.includes('SANAWIYAH') || kUpper.includes('MTS')) {
-            kategori = "SANAWIYAH";
-        } else if (kUpper.includes('ALIYAH') || kUpper.includes('MA')) {
-            kategori = "ALIYAH";
-        } else {
-            let kataPertama = k.split(/[\s-]+/)[0].toUpperCase();
-            kategori = kataPertama;
-        }
+        if (kUpper.includes('TK') || kUpper.includes('RA')) kategori = "TK / RA";
+        else if (kUpper.includes('IBT') || kUpper.includes('IBTIDAIYAH')) kategori = "IBTIDAIYAH";
+        else if (kUpper.includes('SANA') || kUpper.includes('SANAWIYAH') || kUpper.includes('MTS')) kategori = "SANAWIYAH";
+        else if (kUpper.includes('ALIYAH') || kUpper.includes('MA')) kategori = "ALIYAH";
+        else kategori = k.split(/[\s-]+/)[0].toUpperCase();
 
-        if (!kelompokKelas[kategori]) {
-            kelompokKelas[kategori] = [];
-        }
+        if (!kelompokKelas[kategori]) kelompokKelas[kategori] = [];
         kelompokKelas[kategori].push(k);
     });
 
-    // Urutkan kategori berdasarkan bobot jenjang pendidikan yang diinginkan
-    let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => {
-        let bobotA = bobotJenjang[a] || 99;
-        let bobotB = bobotJenjang[b] || 99;
-        return bobotA - bobotB;
-    });
+    let kategoriUrut = Object.keys(kelompokKelas).sort((a, b) => (bobotJenjang[a] || 99) - (bobotJenjang[b] || 99));
 
-    // 3. Susun elemen HTML <optgroup> berdasarkan urutan baru
-    let htmlOpsi = '';
+    // Susun Template HTML untuk daftar pilihan
+    let htmlListDasar = '';
     kategoriUrut.forEach(kategori => {
-        htmlOpsi += `<optgroup label="${kategori}">`;
-        kelompokKelas[kategori].forEach(k => {
-            htmlOpsi += `<option value="${k}">${k}</option>`;
+        htmlListDasar += `<li class="custom-option-group"><i class="fas fa-layer-group mr-2 opacity-50"></i>${kategori}</li>`;
+        kelompokKelas[kategori].forEach(kelas => {
+            let safeKelas = kelas.replace(/'/g, "\\'");
+            // Template menggunakan kata kunci pengganti untuk ID dan Callback
+            htmlListDasar += `<li class="custom-option-item" onclick="pilihKelasCustomGlobal('TARGET_ID', '${safeKelas}', '${safeKelas}', 'TARGET_CALLBACK')">${kelas}</li>`;
         });
-        htmlOpsi += `</optgroup>`;
     });
 
-    // 4. Masukkan ke semua elemen dropdown yang ada di aplikasi
+    // 4. Daftar Seluruh Dropdown di index.html
     const listDropdown = [
-        { id: 'filterKelasSantri', defaultOpt: '<option value="Semua">Semua Kelas</option>' },
-        { id: 'pilihKelasNilai', defaultOpt: '<option value="" disabled selected>-- Silakan Pilih Kelas Dulu --</option>' },
-        { id: 'filterKelasDataNilai', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Terlebih Dahulu --</option>' },
-        { id: 'filterKelasRanking', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Untuk Melihat Ranking --</option>' },
-        { id: 'settingKelas', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas --</option>' },
-        { id: 'mutasiKelasAsal', defaultOpt: '<option value="" disabled selected>-- Pilih Kelas Asal --</option>' },
-        { id: 'mutasiKelasTujuan', defaultOpt: '<option value="" disabled selected>-- Pilih Tujuan --</option><option value="Lulus / Alumni" class="text-green-600 font-bold">🎓 LULUS / ALUMNI</option><option value="Diberhentikan" class="text-red-600 font-bold">🚫 DIBERHENTIKAN (DO)</option><option disabled>───────────────</option>' },
-        { id: 'add_kelas', defaultOpt: '<option value="" disabled selected>Pilih...</option>' },
-        { id: 'edit_kelas', defaultOpt: '<option value="" disabled selected>Pilih...</option>' }
+        { id: 'filterKelasSantri', defaultText: 'Semua Kelas', defaultValue: 'Semua', callback: 'filterSantri' },
+        { id: 'pilihKelasNilai', defaultText: '-- Silakan Pilih Kelas Dulu --', defaultValue: '', callback: 'aktifkanFilterKedua' },
+        { id: 'filterKelasDataNilai', defaultText: '-- Pilih Kelas Terlebih Dahulu --', defaultValue: '', callback: '' },
+        { id: 'filterKelasRanking', defaultText: '-- Pilih Kelas Untuk Melihat Ranking --', defaultValue: '', callback: '' },
+        { id: 'settingKelas', defaultText: '-- Pilih Kelas --', defaultValue: '', callback: 'loadSettingRapor' },
+        { id: 'mutasiKelasAsal', defaultText: '-- Pilih Kelas Asal --', defaultValue: '', callback: 'loadTabelMutasi' },
+        { id: 'mutasiKelasTujuan', defaultText: '-- Pilih Tujuan --', defaultValue: '', callback: '' },
+        { id: 'add_kelas', defaultText: 'Pilih...', defaultValue: '', callback: '' },
+        { id: 'edit_kelas', defaultText: 'Pilih...', defaultValue: '', callback: '' }
     ];
 
     listDropdown.forEach(dropdown => {
-        const elemen = document.getElementById(dropdown.id);
-        if (elemen) {
-            elemen.innerHTML = dropdown.defaultOpt + htmlOpsi;
+        const listEl = document.getElementById('list_' + dropdown.id);
+        if (listEl) {
+            let specificHtml = `<li class="custom-option-item text-gray-400 text-center !pl-3" onclick="pilihKelasCustomGlobal('${dropdown.id}', '${dropdown.defaultValue}', '${dropdown.defaultText}', '${dropdown.callback}')">-- Reset / ${dropdown.defaultText} --</li>`;
+
+            // Khusus Opsi Tambahan untuk Mutasi Tujuan
+            if (dropdown.id === 'mutasiKelasTujuan') {
+                specificHtml += `
+                <li class="custom-option-item text-green-600 font-bold" onclick="pilihKelasCustomGlobal('${dropdown.id}', 'Lulus / Alumni', '🎓 LULUS / ALUMNI', '')">🎓 LULUS / ALUMNI</li>
+                <li class="custom-option-item text-red-600 font-bold" onclick="pilihKelasCustomGlobal('${dropdown.id}', 'Diberhentikan', '🚫 DIBERHENTIKAN (DO)', '')">🚫 DIBERHENTIKAN (DO)</li>
+                <li class="custom-option-group text-center text-gray-300">───────────────</li>`;
+            }
+
+            // Ganti placeholder template dengan ID form masing-masing
+            let finalHtml = htmlListDasar.replace(/TARGET_ID/g, dropdown.id).replace(/TARGET_CALLBACK/g, dropdown.callback);
+            listEl.innerHTML = specificHtml + finalHtml;
         }
     });
 
-    // --- RESET TAMPILAN FORM & TABEL SAAT REFRESH ---
+    // Reset Tampilan Menu saat refresh (Keamanan UI)
     const wadahFilterKedua = document.getElementById('wadahFilterKedua');
-    const formInputNilaiBulk = document.getElementById('formInputNilaiBulk');
     if (wadahFilterKedua) wadahFilterKedua.classList.add('hidden');
+    const formInputNilaiBulk = document.getElementById('formInputNilaiBulk');
     if (formInputNilaiBulk) formInputNilaiBulk.classList.add('hidden');
-
     const formSettingRapor = document.getElementById('formSettingRapor');
     if (formSettingRapor) formSettingRapor.classList.add('hidden');
-
-    const bodyDataNilai = document.getElementById('bodyDataNilai');
-    if (bodyDataNilai) bodyDataNilai.innerHTML = '<tr><td colspan="15" class="p-10 text-center text-gray-500"><i class="fas fa-table text-4xl mb-3 text-gray-300 block"></i> Silakan pilih kelas dan klik tombol cari.</td></tr>';
-
-    const bodyTabelRanking = document.getElementById('bodyTabelRanking');
-    if (bodyTabelRanking) bodyTabelRanking.innerHTML = '<tr><td colspan="5" class="p-8 text-left sm:text-center border-none"><div class="sticky left-6 inline-block text-center text-gray-400"><i class="fas fa-list-ol text-4xl mb-2 text-gray-200 block"></i>Silakan pilih kelas.</div></td></tr>';
-
-    const bodyTabelMutasi = document.getElementById('bodyTabelMutasi');
-    if (bodyTabelMutasi) bodyTabelMutasi.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400"><i class="fas fa-users text-4xl mb-2 text-gray-200 block"></i>Silakan pilih Kelas Asal terlebih dahulu.</td></tr>';
 }
+
+// =========================================================
+// LOGIKA INTERAKSI BUKA-TUTUP MENU GLOBAL
+// =========================================================
+function toggleCustomSelectGlobal(id) {
+    const list = document.getElementById('list_' + id);
+    const icon = document.getElementById('icon_' + id);
+    
+    // Tutup dropdown lain yang sedang terbuka
+    document.querySelectorAll('[id^="list_"]').forEach(el => {
+        if (el.id !== 'list_' + id) el.classList.add('hidden');
+    });
+    document.querySelectorAll('[id^="icon_"]').forEach(el => {
+        if (el.id !== 'icon_' + id) el.classList.remove('rotate-180');
+    });
+
+    if(list) list.classList.toggle('hidden');
+    if(icon) icon.classList.toggle('rotate-180');
+}
+
+function pilihKelasCustomGlobal(id, nilai, teks, callbackName) {
+    const inputEl = document.getElementById(id);
+    const textEl = document.getElementById('text_' + id);
+    
+    if(inputEl) inputEl.value = nilai; 
+    if(textEl) textEl.innerText = teks; 
+    
+    toggleCustomSelectGlobal(id); // Tutup menunya
+    
+    // Jika dropdown memiliki fungsi onchange (seperti loadTabelMutasi), eksekusi otomatis
+    if (callbackName && typeof window[callbackName] === 'function') {
+        window[callbackName]();
+    }
+}
+
+// Menutup daftar secara otomatis jika mengeklik di sembarang tempat (luar kotak)
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.custom-select-wrapper')) {
+        document.querySelectorAll('[id^="list_"]').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('[id^="icon_"]').forEach(el => el.classList.remove('rotate-180'));
+    }
+});
 
 // =========================================================
 // FUNGSI DOWNLOAD TEMPLATE EXCEL (.XLSX) RAPI & BERWARNA
